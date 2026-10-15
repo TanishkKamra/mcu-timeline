@@ -44,7 +44,7 @@ async function start() {
     if (act === "in") {
       try { await A.signInWithPopup(auth, new A.GoogleAuthProvider()); }
       catch (err) {
-        if (!/popup-closed|cancelled-popup/.test(err.code || "")) app.toast(err.code === "auth/popup-blocked" ? "Your browser blocked the sign-in window. Allow pop-ups for this site and try again." : "Sign-in didn't work. Try again in a moment.");
+        if (!/popup-closed|cancelled-popup/.test(err.code || "")) app.toast(err.code === "auth/popup-blocked" ? "Your browser blocked the sign-in window. Allow pop-ups for this site and try again." : err.code === "auth/unauthorized-domain" ? "Sign-in isn't enabled for this address yet (auth/unauthorized-domain)." : `Sign-in didn't work (${err.code || err.message}). Try again in a moment.`);
       }
     }
     else if (act === "out") { await A.signOut(auth); app.toast("Signed out. Your progress is still saved on this device."); }
