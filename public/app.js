@@ -337,8 +337,11 @@ function leaf(u, x, y, label, st) {
 }
 const flatLabel = (u, x, y, anchor) => `<text x="${x}" y="${y}" text-anchor="${anchor}"><tspan class="lbl">${esc(u.label || u.name)}</tspan><tspan class="des" x="${x}" dy="17">${esc(u.des)}</tspan></text>`;
 
+const GEOM = {};
 function renderTree() {
   const ST = Object.fromEntries(unis().map(u => [u.id, stats(u)]));
+  for (const k in GEOM) delete GEOM[k];
+  GEOM["616"] = [[{x:CX, y:BASE_Y}, {x:CX, y:BASE_Y - 130}, {x:CX, y:CY + 130}, {x:CX, y:CY}]];
   let br = "", nodes = "";
   // crown: limbs radiate from the top of the trunk, universes fan out on an arc
   const groups = LIMBS.map(l => ({l, us:unis().filter(u => u.limb === l)})).filter(g => g.us.length);
@@ -351,8 +354,10 @@ function renderTree() {
     slot++;
     const ha = angles.reduce((a, b) => a + b, 0) / angles.length, hub = polar(HUB, ha);
     let limb = curve({x:CX, y:CY + 30}, {x:CX, y:CY - 90}, polar(HUB - 80, ha), hub, true);
+    const limbSeg = [{x:CX, y:CY + 30}, {x:CX, y:CY - 90}, polar(HUB - 80, ha), hub];
     g.us.forEach((u, i) => {
       const a = angles[i], p = polar(R, a);
+      GEOM[u.id] = [limbSeg, [hub, polar(HUB + 70, ha), polar(R - 90, a), p]];
       limb += `<g class="${cls([u.id])}">${curve(hub, polar(HUB + 70, ha), polar(R - 90, a), p, false)}</g>`;
       const lp = polar(R + 18, a), left = a < -90, rot = (left ? a + 180 : a).toFixed(1);
       nodes += leaf(u, p.x, p.y, `<text transform="translate(${lp.x} ${lp.y}) rotate(${rot})" text-anchor="${left ? "end" : "start"}"><tspan class="lbl" y="-2">${esc(u.label || u.name)}</tspan><tspan class="des" x="0" dy="15">${esc(u.des)}</tspan></text>`, ST[u.id]);
@@ -372,16 +377,18 @@ function renderTree() {
   });
   br += `<g class="${cls(["whatif"])}">${twigs}${curve({x:CX, y:880}, {x:CX - 60, y:882}, {x:420, y:895}, {x:350, y:880}, false)}${dots}</g>`;
   nodes += leaf(wi, 350, 880, flatLabel(wi, 328, 876, "end"), ST.whatif);
+  GEOM.whatif = [[{x:CX, y:880}, {x:CX - 60, y:882}, {x:420, y:895}, {x:350, y:880}]];
 
   // branched timelines with a single fork year
   [["tva", -1, 330, 720], ["zombies", 1, 870, 700]].forEach(([id, side, x, y]) => {
     const u = uni(id), fy = forkY(u.fork);
+    GEOM[id] = [[{x:CX, y:fy}, {x:CX + side * 90, y:fy - 4}, {x:x - side * 120, y:y + 30}, {x, y}]];
     br += `<g class="${cls([id])}">${curve({x:CX, y:fy}, {x:CX + side * 90, y:fy - 4}, {x:x - side * 120, y:y + 30}, {x, y}, true)}</g>`;
     nodes += leaf(u, x, y, flatLabel(u, x + side * 22, y - 4, side < 0 ? "end" : "start"), ST[id]);
   });
 
   const trunk = uni("616");
-  $("#tree").innerHTML = `<defs><filter id="glow" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  $("#tree").innerHTML = `<defs><filter id="glow" filterUnits="userSpaceOnUse" x="-100" y="-200" width="1400" height="1400"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <radialGradient id="throne"><stop offset="0" stop-color="#e8bb57" stop-opacity=".5"/><stop offset="1" stop-color="#e8bb57" stop-opacity="0"/></radialGradient></defs>
     ${STARS}
     <ellipse cx="${CX}" cy="${BASE_Y + 20}" rx="160" ry="44" fill="url(#throne)"/>
@@ -506,16 +513,18 @@ function renderPanel(focusSel) {
       : `<button class="btn ghost" type="button" data-act="reset">Reset sandbox</button>`);
 
   renderHero();
+  renderDetail();
   save();
+  window.mcuApp?.onRender?.();
   if (focusSel) document.querySelector(focusSel)?.focus();
 }
 
-const renderAll = f => { renderTree(); renderPanel(f); };
-function select(id, scroll = true) {
-  S.sel = id; editing = null; confirming = null;
+const renderAll = f => { view === "branch" ? renderFocus(S.sel) : renderTree(); renderPanel(f); };
+function select(id) {
+  S.sel = id; editing = null; confirming = null; detailId = null;
   try { history.replaceState(null, "", "#" + id); } catch {}
-  renderAll();
-  if (scroll && matchMedia("(max-width:980px)").matches) $(".panel").scrollIntoView({behavior:"smooth"});
+  renderPanel();
+  view === "branch" ? renderFocus(id, true) : enterBranch(id);
 }
 
 /* ---------- toast with undo ---------- */
@@ -564,7 +573,7 @@ function choose(i) {
   pal.close();
   if (it.kind === "u") { select(it.u.id); return; }
   if (S.hideSeen && S.watched[it.e.id]) S.hideSeen = false;
-  select(it.u.id, false);
+  select(it.u.id);
   const li = document.querySelector(`li.e[data-id="${CSS.escape(it.e.id)}"]`);
   if (li) { li.scrollIntoView({behavior:"smooth", block:"center"}); li.classList.add("flash"); li.querySelector(".eye").focus({preventScroll:true}); }
 }
@@ -579,12 +588,198 @@ pal.addEventListener("click", e => { if (e.target === pal) pal.close(); });
 
 /* ---------- events ---------- */
 const tip = $("#tip"), stage = $("#stage");
-$("#tree").addEventListener("click", e => { const g = e.target.closest(".leaf"); if (g) select(g.dataset.u); });
-$("#tree").addEventListener("keydown", e => {
-  const g = e.target.closest(".leaf");
-  if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); select(g.dataset.u); document.querySelector(`.leaf[data-u="${CSS.escape(g.dataset.u)}"]`)?.focus(); }
+
+/* ---------- branch focus: a branch zooms in and lies flat as a TVA-style timeline ---------- */
+const NS = "http://www.w3.org/2000/svg", VB0 = [0, -20, 1200, 1050], GROUND = 560, X0 = 110, X1 = 1090;
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let view = "tree", animating = false, detailId = null;
+const setVB = v => $("#tree").setAttribute("viewBox", v.map(n => n.toFixed(1)).join(" "));
+const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const tween = (ms, fn) => new Promise(res => {
+  if (REDUCED) { fn(1); return res(); }
+  const t0 = performance.now();
+  let done = false;
+  const finish = () => { if (!done) { done = true; fn(1); res(); } };
+  const step = now => { if (done) return; const t = Math.min(1, (now - t0) / ms); fn(ease(t)); t < 1 ? requestAnimationFrame(step) : finish(); };
+  requestAnimationFrame(step);
+  // background tabs pause animation frames; never leave the page stuck mid-animation
+  setTimeout(finish, ms + 400);
 });
+const bez = ([a, b, c, d], t) => { const u = 1 - t; return {x:u*u*u*a.x + 3*u*u*t*b.x + 3*u*t*t*c.x + t*t*t*d.x, y:u*u*u*a.y + 3*u*u*t*b.y + 3*u*t*t*c.y + t*t*t*d.y}; };
+const sample = (segs, n = 56) => Array.from({length:n}, (_, i) => { const f = i / (n - 1) * segs.length, k = Math.min(segs.length - 1, Math.floor(f)); return bez(segs[k], f - k); });
+// zoom box around the branch, padded and kept at the stage's aspect ratio
+function fitBox(pts) {
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y), cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  let w = Math.max(Math.max(...xs) - Math.min(...xs) + 260, 520), h = Math.max(Math.max(...ys) - Math.min(...ys) + 260, w * VB0[3] / VB0[2]);
+  w = Math.max(w, h * VB0[2] / VB0[3]);
+  return [cx - w / 2, cy - h / 2, w, h];
+}
+function morphPath() {
+  const m = document.createElementNS(NS, "path");
+  m.setAttribute("class", "morph"); m.setAttribute("filter", "url(#glow)");
+  $("#tree").appendChild(m);
+  return [m, P => m.setAttribute("d", "M" + P.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L"))];
+}
+const flat = pts => pts.map((_, i) => ({x:X0 - 60 + (X1 - X0 + 120) * i / (pts.length - 1), y:GROUND}));
+const syncChrome = () => { $("#back").hidden = view !== "branch"; stage.classList.toggle("in-branch", view === "branch"); };
+
+async function enterBranch(id) {
+  if (animating) return;
+  renderTree();
+  const segs = GEOM[id];
+  if (!segs || REDUCED) { view = "branch"; renderFocus(id, true); syncChrome(); return; }
+  animating = true;
+  const pts = sample(segs), tgt = flat(pts), bb = fitBox(pts), [m, draw] = morphPath(), svg = $("#tree");
+  draw(pts);
+  svg.classList.add("focusing");
+  await tween(520, t => setVB(VB0.map((v, i) => v + (bb[i] - v) * t)));
+  await tween(720, t => { draw(pts.map((p, i) => ({x:p.x + (tgt[i].x - p.x) * t, y:p.y + (tgt[i].y - p.y) * t}))); setVB(bb.map((v, i) => v + (VB0[i] - v) * t)); });
+  svg.classList.remove("focusing");
+  m.remove();
+  view = "branch"; renderFocus(id, true); syncChrome(); animating = false;
+}
+
+async function exitBranch() {
+  if (animating || view !== "branch") return;
+  view = "tree"; syncChrome(); tip.hidden = true;
+  const svg = $("#tree");
+  svg.classList.add("focusing");
+  renderTree();
+  const segs = GEOM[S.sel];
+  if (!segs || REDUCED) { svg.classList.remove("focusing"); return; }
+  animating = true;
+  const pts = sample(segs), tgt = flat(pts), bb = fitBox(pts), [m, draw] = morphPath();
+  draw(tgt);
+  await tween(680, t => { draw(tgt.map((p, i) => ({x:p.x + (pts[i].x - p.x) * t, y:p.y + (pts[i].y - p.y) * t}))); setVB(VB0.map((v, i) => v + (bb[i] - v) * t)); });
+  svg.classList.remove("focusing");
+  await tween(520, t => setVB(bb.map((v, i) => v + (VB0[i] - v) * t)));
+  m.remove(); animating = false;
+}
+
+function renderFocus(id, intro) {
+  const u = uni(id), es = entries(u).sort((a, b) => a.ord - b.ord), n = es.length;
+  const X = i => n <= 1 ? 600 : X0 + (X1 - X0) * i / (n - 1), hitR = Math.max(7, Math.min(16, (X1 - X0) / Math.max(n, 1) / 2));
+  let ticks = "", nodes = "", twigs = "", lastYear = null, lastTick = -1e9, tk = 0;
+  es.forEach((e, i) => {
+    const x = +X(i).toFixed(1), yn = yearNum(e.y);
+    if (yn !== Infinity && yn !== lastYear && x - lastTick > 46) { ticks += `<line class="tick" x1="${x}" y1="${GROUND + 12}" x2="${x}" y2="${GROUND + 24}"/><text class="yt" x="${x}" y="${GROUND + 42}" text-anchor="middle">${yn}</text>`; lastTick = x; }
+    if (yn !== Infinity) lastYear = yn;
+    const lab = n <= 16 ? `<text class="nlbl" transform="translate(${x + 4} ${GROUND - 20}) rotate(-38)">${esc(e.t)}</text>` : "";
+    nodes += `<g class="node${S.watched[e.id] ? " seen" : ""}${e.id === detailId ? " sel" : ""}" data-id="${esc(e.id)}" tabindex="0" role="button" aria-label="${esc(e.t)}, set ${esc(e.y)}" style="--d:${intro ? Math.round(i * Math.min(22, 700 / n)) : 0}ms">
+      <circle class="hit" cx="${x}" cy="${GROUND}" r="${hitR.toFixed(1)}"/><circle class="ring" cx="${x}" cy="${GROUND}" r="7"/><circle class="core" cx="${x}" cy="${GROUND}" r="6"/>${lab}</g>`;
+    // TVA-style: other timelines peel off the Sacred Timeline where Marvel's order slots them in
+    if (u.id === "616") unis().filter(b => b.at === e.id).forEach(b => {
+      const k = tk++, dir = x > 860 ? -1 : 1, h = 120 + k * 52, ex = x + dir * (110 + k * 26), end = dir > 0 ? Math.min(ex + 150, 1190) : Math.max(ex - 150, 10);
+      twigs += `<g class="twigleaf" data-u="${esc(b.id)}" tabindex="0" role="button" aria-label="Open ${esc(b.name)}"><path class="fork" d="M${x} ${GROUND} C${x + dir * 50} ${GROUND}, ${x + dir * 50} ${GROUND - h}, ${ex} ${GROUND - h} L${end} ${GROUND - h}"/><circle class="core" cx="${ex}" cy="${GROUND - h}" r="5"/><text class="flbl" x="${ex + dir * 10}" y="${GROUND - h - 12}" text-anchor="${dir > 0 ? "start" : "end"}">${esc(b.name)}</text></g>`;
+    });
+  });
+  const where = u.id === "616" ? "The Sacred Timeline, laid flat" : u.fork != null ? `Branched off the Sacred Timeline in ${u.fork}` : "A separate reality";
+  $("#tree").innerHTML = `<defs><filter id="glow" filterUnits="userSpaceOnUse" x="-100" y="-200" width="1400" height="1400"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <radialGradient id="floorg"><stop offset="0" stop-color="#e8bb57" stop-opacity=".16"/><stop offset="1" stop-color="#e8bb57" stop-opacity="0"/></radialGradient></defs>
+    ${STARS}
+    <g class="focus${intro ? " intro" : ""}">
+      <ellipse class="floor" cx="600" cy="${GROUND + 8}" rx="640" ry="80" fill="url(#floorg)"/>
+      <g filter="url(#glow)"><path class="ground-glow" d="M${X0 - 60} ${GROUND} L${X1 + 60} ${GROUND}"/><path class="ground" d="M${X0 - 60} ${GROUND} L${X1 + 60} ${GROUND}"/><path class="ground flow" d="M${X0 - 60} ${GROUND} L${X1 + 60} ${GROUND}"/>${twigs}</g>
+      ${ticks}${nodes}
+      <text class="ftitle" x="60" y="150">${esc(u.name)}</text>
+      <text class="fdes" x="60" y="180">${esc(u.des)} · ${esc(where)} · ${n} title${n === 1 ? "" : "s"}</text>
+      <text class="fdes" x="60" y="${GROUND + 110}">Click a moment to plug it into the details panel.</text>
+    </g>`;
+}
+
+/* ---------- energy transfer: a node fires and a beam carries it into the details panel ---------- */
+function renderDetail() {
+  const box = $("#detail"), u = uni(S.sel), all = entries(u), e = detailId && all.find(x => x.id === detailId);
+  if (!e) { box.innerHTML = ""; return; }
+  const pos = [...all].sort((a, b) => a.ord - b.ord).indexOf(e) + 1, seen = S.watched[e.id], soon = e.rel && e.rel > TODAY;
+  const also = unis().filter(x => x.id !== u.id && entries(x).some(y => y.id === e.id));
+  const ni = u.id === "616" ? NARRATIVE.items.findIndex(([t]) => t[0] !== "@" && slug(t) === e.id) : -1, nn = ni >= 0 ? NARRATIVE.items[ni] : null;
+  box.innerHTML = `<div class="detail k-${e.k}${seen ? " seen" : ""}">
+    <div class="dt-top"><span class="kd"></span>${TYPE[e.k] || "Title"} · ${esc(u.name)}<button type="button" class="dt-x" data-act="close-detail" aria-label="Close details">×</button></div>
+    <h3>${esc(e.t)}</h3>
+    ${typeof SYN !== "undefined" && SYN[e.id] ? `<p class="dt-syn">${esc(SYN[e.id])}</p>` : ""}
+    <dl class="dt-facts">
+      <div><dt>Set</dt><dd${e.c === "e" ? ` class="est" title="Best estimate: no official date"` : ""}>${esc(e.y || "Unknown")}</dd></div>
+      <div><dt>${soon ? "Out" : "Released"}</dt><dd>${fmtDate(e.rel)}</dd></div>
+      <div><dt>Story order</dt><dd>${pos} of ${all.length}</dd></div>
+      ${nn ? `<div><dt>Narrative order</dt><dd>#${ni + 1}${nn[1] ? " · optional" : ""}</dd></div>` : ""}
+    </dl>
+    ${nn && nn[2] ? `<p class="dt-note">${esc(nn[2])}</p>` : ""}
+    ${also.length ? `<p class="dt-also">Also appears in ${also.map(x => `<button type="button" class="uchip" data-go="${esc(x.id)}">${esc(x.name)}</button>`).join(", ")}</p>` : ""}
+    <div class="dt-act"><button class="btn ${seen ? "ghost" : "primary"}" type="button" data-act="watch" data-id="${esc(e.id)}">${seen ? "Watched ✓" : "Mark watched"}</button><button class="btn ghost" type="button" data-show="${esc(e.id)}">Show in list</button></div>
+  </div>`;
+}
+
+function showInList(id) {
+  if (S.hideSeen && S.watched[id]) { S.hideSeen = false; renderPanel(); }
+  const li = document.querySelector(`li.e[data-id="${CSS.escape(id)}"]`);
+  if (li) { li.scrollIntoView({behavior:"smooth", block:"center"}); li.classList.remove("flash"); void li.offsetWidth; li.classList.add("flash"); li.querySelector(".eye").focus({preventScroll:true}); }
+}
+
+function beam(fromEl, toEl) {
+  const a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect(), svg = $("#beam");
+  const p0 = {x:a.left + a.width / 2, y:a.top + a.height / 2}, right = b.left > p0.x + 40;
+  const p3 = right ? {x:b.left + 2, y:b.top + Math.min(44, b.height / 2)} : {x:b.left + b.width / 2, y:b.top + 2};
+  const c1 = right ? {x:p0.x + (p3.x - p0.x) * .35, y:p0.y - 140} : {x:p0.x, y:p0.y + 140};
+  const c2 = right ? {x:p3.x - 120, y:p3.y} : {x:p3.x, y:p3.y - 140};
+  const d = `M${p0.x} ${p0.y} C${c1.x} ${c1.y} ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
+  svg.setAttribute("viewBox", `0 0 ${innerWidth} ${innerHeight}`);
+  svg.innerHTML = `<path class="b-glow" d="${d}"/><path class="b-core" d="${d}"/><circle class="b-spark" r="5" cx="${p0.x}" cy="${p0.y}"/>`;
+  svg.style.opacity = 1; svg.hidden = false;
+  const core = svg.querySelector(".b-core"), glow = svg.querySelector(".b-glow"), spark = svg.querySelector(".b-spark"), L = core.getTotalLength();
+  [core, glow].forEach(p => { p.style.strokeDasharray = L; p.style.strokeDashoffset = L; });
+  return tween(560, t => {
+    core.style.strokeDashoffset = glow.style.strokeDashoffset = L * (1 - t);
+    const pt = core.getPointAtLength(L * t);
+    spark.setAttribute("cx", pt.x); spark.setAttribute("cy", pt.y);
+  }).then(() => { tween(380, t => svg.style.opacity = 1 - t).then(() => { svg.hidden = true; }); });
+}
+
+let plugging = false;
+async function plugIn(id) {
+  if (plugging) return;
+  plugging = true;
+  detailId = id;
+  document.querySelectorAll("#tree .node.sel").forEach(n => n.classList.remove("sel"));
+  const node = view === "branch" ? document.querySelector(`#tree .node[data-id="${CSS.escape(id)}"]`) : null;
+  renderDetail();
+  const card = $("#detail .detail");
+  if (node) { node.classList.add("sel"); node.classList.remove("fire"); void node.getBoundingClientRect(); node.classList.add("fire"); }
+  if (card) {
+    const r = card.getBoundingClientRect();
+    if (r.top < 70 || r.bottom > innerHeight - 10) { card.scrollIntoView({behavior:REDUCED ? "auto" : "smooth", block:"center"}); await sleep(REDUCED ? 0 : 450); }
+    if (node && !REDUCED) { await sleep(180); await beam(node.querySelector(".core"), card); }
+    card.classList.remove("charged"); void card.offsetWidth; card.classList.add("charged");
+  }
+  setTimeout(() => node?.classList.remove("fire"), 700);
+  plugging = false;
+}
+
+$("#tree").addEventListener("click", e => {
+  if (animating) return;
+  const n = e.target.closest(".node");
+  if (n) { plugIn(n.dataset.id); return; }
+  const g = e.target.closest("[data-u]");
+  if (g) select(g.dataset.u);
+});
+$("#tree").addEventListener("keydown", e => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const n = e.target.closest(".node"), g = e.target.closest("[data-u]");
+  if (n) { e.preventDefault(); plugIn(n.dataset.id); }
+  else if (g) { e.preventDefault(); select(g.dataset.u); }
+});
+$("#back").addEventListener("click", exitBranch);
 $("#tree").addEventListener("pointermove", e => {
+  const nd = e.target.closest(".node");
+  if (nd && e.pointerType !== "touch") {
+    const en = entries(uni(S.sel)).find(x => x.id === nd.dataset.id), r = stage.getBoundingClientRect();
+    tip.innerHTML = `<b>${esc(en.t)}</b><span>${TYPE[en.k] || "Title"} · set ${esc(en.y)}${S.watched[en.id] ? " · watched" : ""}</span>`;
+    tip.style.left = Math.min(Math.max(e.clientX - r.left, 120), r.width - 120) + "px";
+    tip.style.top = e.clientY - r.top + "px";
+    tip.hidden = false;
+    return;
+  }
   const g = e.target.closest(".leaf");
   if (!g || e.pointerType === "touch") { tip.hidden = true; return; }
   const u = uni(g.dataset.u), [n, w] = stats(u), r = stage.getBoundingClientRect();
@@ -597,11 +792,12 @@ $("#tree").addEventListener("pointerleave", () => tip.hidden = true);
 $("#uSel").addEventListener("change", e => select(e.target.value));
 $("#mode").addEventListener("click", e => { const m = e.target.dataset.mode; if (m) { S.mode = m; renderPanel(); } });
 $("#f-seen").addEventListener("change", e => { S.hideSeen = e.target.checked; renderPanel(); });
-$("#start").addEventListener("click", () => { select("616", false); const b = $("#next .btn"); b?.scrollIntoView({behavior:"smooth", block:"center"}); b?.focus({preventScroll:true}); });
+$("#start").addEventListener("click", () => { select("616"); stage.scrollIntoView({behavior:"smooth"}); });
 document.querySelectorAll("[data-pal]").forEach(b => b.addEventListener("click", openPal));
 document.addEventListener("keydown", e => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); pal.open ? pal.close() : openPal(); return; }
   if (pal.open || e.metaKey || e.ctrlKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+  if (e.key === "Escape" && view === "branch") { exitBranch(); return; }
   if (e.key === "/") { e.preventDefault(); openPal(); }
   else if (["1", "2", "3", "4"].includes(e.key)) { S.mode = ["story", "release", "my", "narrative"][+e.key - 1]; renderPanel(); }
 });
@@ -627,6 +823,10 @@ $("#addU").addEventListener("submit", e => {
 document.addEventListener("click", e => {
   const go = e.target.closest("[data-go]");
   if (go) { select(go.dataset.go); return; }
+  const sh = e.target.closest("[data-show]");
+  if (sh) { showInList(sh.dataset.show); return; }
+  const tt = e.target.closest("li.e .t");
+  if (tt && !e.target.closest("form")) { plugIn(tt.closest("li.e").dataset.id); return; }
   const b = e.target.closest("[data-act]");
   if (!b || b.tagName === "FORM") return;
   const act = b.dataset.act, id = b.dataset.id || b.closest("li.e")?.dataset.id, key = S.sel + ":" + id;
@@ -634,8 +834,9 @@ document.addEventListener("click", e => {
   if (act === "watch") {
     const on = !S.watched[id], fromNext = !!b.dataset.id;
     withUndo(on ? `Marked “${title()}” watched` : `Unmarked “${title()}”`, () => { on ? S.watched[id] = true : delete S.watched[id]; },
-      fromNext ? "#next .btn" : `li.e[data-id="${CSS.escape(id)}"] .eye`);
+      fromNext ? (b.closest("#detail") ? "#detail [data-act=watch]" : "#next .btn") : `li.e[data-id="${CSS.escape(id)}"] .eye`);
   }
+  else if (act === "close-detail") { detailId = null; renderDetail(); document.querySelectorAll("#tree .node.sel").forEach(n => n.classList.remove("sel")); }
   else if (act === "up" || act === "down") {
     const i = visible.indexOf(id), ref = visible[act === "up" ? i - 1 : i + 1];
     if (ref) { moveTo(S.order[S.sel], id, ref, act === "down"); renderPanel(`[data-id="${CSS.escape(id)}"] [data-act="${act}"]:not([disabled])`); }
@@ -653,14 +854,14 @@ document.addEventListener("click", e => {
   else if (act === "restore") { withUndo("Restored removed titles", () => { S.removed = S.removed.filter(k => !k.startsWith(S.sel + ":")); }); }
   else if (act === "reset" || act === "delu") { confirming = act === "reset" ? "reset" : "u"; renderPanel('[data-act="cancel-c"]'); }
   else if (act === "cancel-c") { confirming = null; renderPanel(); }
-  else if (act === "reset-yes") { const snap = JSON.stringify(S); S = DEF(); confirming = null; select("616", false); toast("Sandbox reset", snap); }
+  else if (act === "reset-yes") { const snap = JSON.stringify(S); S = DEF(); confirming = null; select("616"); toast("Sandbox reset", snap); }
   else if (act === "delu-yes") {
     const snap = JSON.stringify(S), u = S.sel;
     S.cUnis = S.cUnis.filter(x => x.id !== u);
     delete S.cItems[u]; delete S.order[u];
     S.removed = S.removed.filter(k => !k.startsWith(u + ":"));
     confirming = null;
-    select("616", false);
+    select("616");
     toast("Universe deleted", snap);
   }
 });
