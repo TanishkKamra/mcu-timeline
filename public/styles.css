@@ -207,3 +207,10 @@ dialog#pal::backdrop{background:rgba(0,0,0,.55);backdrop-filter:blur(3px)}
 .account .link{background:none;border:0;padding:2px 4px;color:var(--muted);font-size:12.5px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .account .link:hover{color:var(--fg)}
 .account .link.warn{color:var(--danger)}
+
+/* Narrative order */
+li.credit{padding:10px 10px 6px;font-size:12.5px;line-height:1.55;color:var(--muted)}
+li.credit b{color:var(--fg);font-weight:600}
+li.credit a{color:var(--strand)}
+.soon.opt{color:var(--muted);border-color:var(--line2)}
+.vnote{color:var(--gold)}
