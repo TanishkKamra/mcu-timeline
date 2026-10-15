@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://lh3.googleusercontent.com; connect-src https://*.googleapis.com https://www.gstatic.com; frame-src https://*.firebaseapp.com https://accounts.google.com; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <title>MCU Timeline Sandbox</title>
 <meta name="description" content="Every Marvel film and series on one tree: 24 universes in Marvel's official story order. Track what you've watched, branch by branch. Free, unofficial fan project.">
@@ -26,9 +26,11 @@
     <div class="brand"><i></i>Yggdrasil <span>MCU Timeline Sandbox</span></div>
     <svg id="tree" viewBox="0 -20 1200 1050" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Universes, pick one to open its timeline"></svg>
     <div class="tip" id="tip" hidden></div>
+    <p class="swipe" aria-hidden="true">Swipe the tree sideways to see every branch</p>
   </section>
 
   <header class="hero">
+    <div class="account" id="account" hidden></div>
     <div class="news"><b>New</b>VisionQuest added to the Sacred Timeline</div>
     <h1>Every Marvel story.<br><span>One tree.</span></h1>
     <p class="lede"><b id="nTitles">185</b> films and series across <b id="nUnis">24</b> universes, in Marvel's official story order. Track what you've seen, branch by branch.</p>
@@ -77,7 +79,7 @@
 
     <footer>
       <p>The Sacred Timeline follows Marvel's own Disney+ Complete Timeline (June 2026) and the official 2023 timeline book; newer titles use Marvel's statements. Other universes use on-screen dates. Release dates are cross-checked against Wikipedia, Wikidata and TVmaze. A dotted year is a best estimate where no official date exists.</p>
-      <p>Shortcuts: <kbd class="kk">Ctrl K</kbd> search, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> change order. Watch marks and edits stay in this browser.</p>
+      <p>Shortcuts: <kbd class="kk">Ctrl K</kbd> search, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> change order. Watch marks and edits stay in this browser. If you sign in with Google, they are also stored under your Google account ID so they follow you to other devices; nothing else about you is stored, and you can delete it anytime.</p>
       <p>Unofficial fan project. Not affiliated with or endorsed by Marvel Studios or The Walt Disney Company. All titles and characters are trademarks of their respective owners.</p>
       <div class="rowx" id="foot"></div>
     </footer>
@@ -91,5 +93,6 @@
 </dialog>
 <div id="toast" role="status" aria-live="polite" hidden><span id="toastMsg"></span><button type="button" id="undo">Undo</button></div>
 <script src="app.js"></script>
+<script type="module" src="sync.js"></script>
 </body>
 </html>

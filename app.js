@@ -222,7 +222,14 @@ let S;
 try { S = {...DEF(), ...JSON.parse(localStorage.getItem(KEY) || "{}")}; } catch { S = DEF(); }
 const hash = decodeURIComponent(location.hash.slice(1));
 let editing = null, confirming = null;
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
+// what syncs to the cloud: progress and edits, not view settings
+const syncData = s => JSON.stringify([s.watched, s.edits, s.removed, s.order, s.cItems, s.cUnis]);
+let lastData = syncData(S);
+const save = () => {
+  const d = syncData(S);
+  if (d !== lastData) { lastData = d; S.updatedAt = Date.now(); window.mcuApp?.onSave?.(); }
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
+};
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const slug = t => t.toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -642,3 +649,14 @@ tl.addEventListener("drop", e => {
 tl.addEventListener("dragend", () => { dragId = null; clearOver(); });
 
 renderAll();
+
+// phones: start the sideways-scrolling tree centred on the trunk
+if (stage.scrollWidth > stage.clientWidth) stage.scrollLeft = (stage.scrollWidth - stage.clientWidth) / 2;
+
+// hooks for sync.js (optional Google sign-in)
+window.mcuApp = {
+  get: () => S,
+  set(s) { S = {...DEF(), ...s}; editing = null; confirming = null; lastData = syncData(S); renderAll(); },
+  toast,
+  onSave: null,
+};
