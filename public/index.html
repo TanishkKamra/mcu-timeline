@@ -27,7 +27,9 @@
 <div class="app">
   <section class="stage" id="stage" aria-label="Yggdrasil, the tree of timelines">
     <div class="brand"><i></i>Yggdrasil <span>MCU Timeline Sandbox</span></div>
+    <svg id="sky" viewBox="0 -20 1200 1050" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
     <svg id="tree" viewBox="0 -20 1200 1050" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Universes, pick one to open its timeline"></svg>
+    <svg id="fx" viewBox="0 -20 1200 1050" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
     <button class="btn ghost back" id="back" type="button" hidden>← Tree</button>
     <div class="tip" id="tip" hidden></div>
     <p class="swipe" aria-hidden="true">Swipe the tree sideways to see every branch</p>
@@ -101,6 +103,7 @@
 <div id="toast" role="status" aria-live="polite" hidden><span id="toastMsg"></span><button type="button" id="undo">Undo</button></div>
 <script src="app.js"></script>
 <script src="synopses.js"></script>
+<script src="episodes.js"></script>
 <script src="tva.js"></script>
 <script type="module" src="sync.js"></script>
 </body>
