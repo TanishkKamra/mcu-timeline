@@ -307,30 +307,45 @@ const forkY = yr => 940 - Math.max(0, Math.min(90, yr - 1940)) / 90 * 300;
 let seed = 11;
 const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
 const STARS = Array.from({length:170}, () => `<circle class="star" cx="${(rnd()*1200).toFixed(0)}" cy="${(-20 + rnd()*1050).toFixed(0)}" r="${(0.4+rnd()*1.3).toFixed(2)}" opacity="${(0.12+rnd()*0.5).toFixed(2)}"/>`).join("");
+// Trunk: N strands twisted round each other like a rope. Every strand is one unbroken line from the tip of
+// its root, up the trunk, to the crown, where the limbs carry on from the strand tops. The twist eases in
+// and out (no sideways kink at either end) and the trunk flares at the base and the crown, so the roots
+// spread out of it and the limbs grow out of it instead of meeting it at a seam.
+const TOP_Y = CY + 30;
 const TRUNK = (() => {
-  let s = "";
-  for (let k = 0; k < 7; k++) {
-    let d = "";
-    for (let y = BASE_Y; y >= CY - 8; y -= 8) {
-      const t = (BASE_Y - y) / (BASE_Y - CY), w = 34 * (1 - t) + 7;
-      d += (d ? "L" : "M") + (CX + w * Math.sin(t * 8 + k * 0.9)).toFixed(1) + " " + y + " ";
-    }
-    s += `<path d="${d}"/>` + (k % 3 ? "" : `<path class="flow" d="${d}" style="animation-delay:-${k}s"/>`);
+  const N = 11, H = BASE_Y - TOP_Y, ph = k => 2 * Math.PI * k / N;
+  const w = t => 13 + 43 * (1 - t) ** 3 + 15 * t ** 4;             // flared at both ends, waisted between
+  const turn = t => 8 * (3 * t * t - 2 * t * t * t);                // twist with zero slope at both ends
+  const at = (k, t) => ({x:CX + w(t) * Math.sin(turn(t) + ph(k)), y:BASE_Y - H * t});
+  let svg = "";
+  const tops = [];
+  for (let k = 0; k < N; k++) {
+    const f = at(k, 0), sn = Math.sin(ph(k)), top = at(k, 1);
+    tops.push(top);
+    // the root carries on the way the strand was heading: outward by as much as the strand sits off-centre
+    const R = {x:CX + (f.x - CX) * 5, y:BASE_Y + 30 + 12 * (1 - Math.abs(sn))};
+    const c1 = {x:f.x + 129 * sn * .07, y:BASE_Y + 26}, c2 = {x:R.x - (R.x - f.x) * .45, y:R.y - 2};
+    let d = `M${R.x.toFixed(1)} ${R.y.toFixed(1)} C${c2.x.toFixed(1)} ${c2.y.toFixed(1)},${c1.x.toFixed(1)} ${c1.y.toFixed(1)},${f.x.toFixed(1)} ${f.y}`;
+    for (let i = 1; i <= 46; i++) { const q = at(k, i / 46); d += ` L${q.x.toFixed(1)} ${q.y.toFixed(1)}`; }
+    // no wide halo strokes here: stacked on a braid they read as blocky slabs; the trunk's glow is .core
+    svg += `<path pathLength="1" d="${d}"/>` + (k % 3 ? "" : `<path class="flow" d="${d}" style="animation-delay:-${k}s"/>`);
   }
-  for (const dx of [-230, -150, -80, -25, 40, 110, 180, 240]) s += `<path d="M${CX} ${BASE_Y - 10} Q${CX + dx * .3} ${BASE_Y + 30} ${CX + dx} ${BASE_Y + 40}"/>`;
-  return s;
+  tops.sort((p, q) => p.x - q.x);
+  return {svg, tops};
 })();
 
-const curve = (p0, c1, c2, p3, flow) => {
-  let s = "";
-  for (const o of [-5, 0, 5]) s += `<path d="M${p0.x} ${p0.y} C${c1.x + o} ${c1.y},${c2.x} ${c2.y + o},${p3.x} ${p3.y}"/>`;
+// glow comes from a wide, faint halo stroke under the strands; an SVG blur filter here re-blurs on every
+// animation frame (the flowing dashes alone made it work constantly) and made the branch animation lag
+const curve = (p0, c1, c2, p3, flow, offs = [-5, 0, 5]) => {
+  let s = `<path class="halo" pathLength="1" d="M${p0.x} ${p0.y} C${c1.x} ${c1.y},${c2.x} ${c2.y},${p3.x} ${p3.y}"/>`;
+  for (const o of offs) s += `<path pathLength="1" d="M${p0.x} ${p0.y} C${c1.x + o} ${c1.y},${c2.x} ${c2.y + o},${p3.x} ${p3.y}"/>`;
   return s + (flow ? `<path class="flow" d="M${p0.x} ${p0.y} C${c1.x} ${c1.y},${c2.x} ${c2.y},${p3.x} ${p3.y}"/>` : "");
 };
 const cls = ids => ids.includes(S.sel) ? "on" : S.sel === "616" ? "" : "dim";
 
-function leaf(u, x, y, label, st) {
+function leaf(u, x, y, label, st, gd = 1.6) {
   const [n, w] = st, r = 4 + Math.min(5, Math.sqrt(n) * 1.1), rr = r + 5, C = 2 * Math.PI * rr;
-  return `<g class="leaf${u.id === S.sel ? " on" : ""}" data-u="${esc(u.id)}" tabindex="0" role="button" aria-label="${esc(u.name)}, ${w} of ${n} watched" aria-pressed="${u.id === S.sel}">
+  return `<g class="leaf${u.id === S.sel ? " on" : ""}" data-u="${esc(u.id)}" tabindex="0" role="button" style="--gd:${gd.toFixed(2)}s" aria-label="${esc(u.name)}, ${w} of ${n} watched" aria-pressed="${u.id === S.sel}">
     <circle class="hit" cx="${x}" cy="${y}" r="22"/>
     ${w ? `<circle class="ring-bg" cx="${x}" cy="${y}" r="${rr}"/><circle class="ring" cx="${x}" cy="${y}" r="${rr}" stroke-dasharray="${(w / n * C).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 ${x} ${y})"/>` : ""}
     <circle class="dot" cx="${x}" cy="${y}" r="${r.toFixed(1)}"/>${label}</g>`;
@@ -349,18 +364,23 @@ function renderTree() {
   // ponytail: one arc of fixed slots; past ~30 universes the labels start to crowd
   const step = 172 / Math.max(slots - 1, 1);
   let slot = 0;
-  groups.forEach(g => {
+  groups.forEach((g, gi) => {
     const angles = g.us.map(() => -176 + step * slot++);
     slot++;
     const ha = angles.reduce((a, b) => a + b, 0) / angles.length, hub = polar(HUB, ha);
-    let limb = curve({x:CX, y:CY + 30}, {x:CX, y:CY - 90}, polar(HUB - 80, ha), hub, true);
-    const limbSeg = [{x:CX, y:CY + 30}, {x:CX, y:CY - 90}, polar(HUB - 80, ha), hub];
+    // every trunk strand carries on into a limb: each limb takes the strand tops on its side of the crown
+    // and its strands leave from those, heading on up the way they ran, then gather at the limb's hub
+    const T = TRUNK.tops, a0 = Math.floor(gi * T.length / groups.length), a1 = Math.max(a0 + 1, Math.floor((gi + 1) * T.length / groups.length));
+    const starts = T.slice(a0, a1), c2 = polar(HUB - 80, ha), up = q => ({x:q.x + (q.x - CX) * .6, y:CY - 80});
+    const mid = starts[starts.length >> 1], line = (q, o) => `M${q.x.toFixed(1)} ${q.y} C${(up(q).x + o).toFixed(1)} ${up(q).y},${c2.x} ${c2.y + o},${hub.x} ${hub.y}`;
+    let limb = `<g class="stem" style="--gd:.75s"><path class="halo" pathLength="1" d="${line(mid, 0)}"/>${[-9, -4.5, 0, 4.5, 9].map((o, j) => `<path pathLength="1" d="${line(starts[Math.floor(j * starts.length / 5)], o)}"/>`).join("")}<path class="flow" d="${line(mid, 0)}"/></g>`;
+    const limbSeg = [mid, up(mid), c2, hub];
     g.us.forEach((u, i) => {
       const a = angles[i], p = polar(R, a);
       GEOM[u.id] = [limbSeg, [hub, polar(HUB + 70, ha), polar(R - 90, a), p]];
-      limb += `<g class="${cls([u.id])}">${curve(hub, polar(HUB + 70, ha), polar(R - 90, a), p, false)}</g>`;
+      limb += `<g class="${cls([u.id])}" style="--gd:${(1.15 + slot * .018).toFixed(2)}s">${curve(hub, polar(HUB + 70, ha), polar(R - 90, a), p, false)}</g>`;
       const lp = polar(R + 18, a), left = a < -90, rot = (left ? a + 180 : a).toFixed(1);
-      nodes += leaf(u, p.x, p.y, `<text transform="translate(${lp.x} ${lp.y}) rotate(${rot})" text-anchor="${left ? "end" : "start"}"><tspan class="lbl" y="-2">${esc(u.label || u.name)}</tspan><tspan class="des" x="0" dy="15">${esc(u.des)}</tspan></text>`, ST[u.id]);
+      nodes += leaf(u, p.x, p.y, `<text transform="translate(${lp.x} ${lp.y}) rotate(${rot})" text-anchor="${left ? "end" : "start"}"><tspan class="lbl" y="-2">${esc(u.label || u.name)}</tspan><tspan class="des" x="0" dy="15">${esc(u.des)}</tspan></text>`, ST[u.id], 1.6 + slot * .03);
     });
     br += `<g class="${cls(g.us.map(u => u.id))}">${limb}</g>`;
     const lp = polar(HUB - 34, ha);
@@ -375,26 +395,28 @@ function renderTree() {
     twigs += `<path d="M${CX} ${y} Q${CX + side * L * .55} ${y + 2} ${tip.x} ${tip.y}"/>`;
     dots += `<circle class="twig" cx="${tip.x}" cy="${tip.y}" r="3.5"><title>${esc(r[0])} · splits ${r[5]}</title></circle>`;
   });
-  br += `<g class="${cls(["whatif"])}">${twigs}${curve({x:CX, y:880}, {x:CX - 60, y:882}, {x:420, y:895}, {x:350, y:880}, false)}${dots}</g>`;
-  nodes += leaf(wi, 350, 880, flatLabel(wi, 328, 876, "end"), ST.whatif);
+  br += `<g class="${cls(["whatif"])}" style="--gd:.5s">${twigs}${curve({x:CX, y:880}, {x:CX - 60, y:882}, {x:420, y:895}, {x:350, y:880}, false)}${dots}</g>`;
+  nodes += leaf(wi, 350, 880, flatLabel(wi, 328, 876, "end"), ST.whatif, 1.1);
   GEOM.whatif = [[{x:CX, y:880}, {x:CX - 60, y:882}, {x:420, y:895}, {x:350, y:880}]];
 
   // branched timelines with a single fork year
   [["tva", -1, 330, 720], ["zombies", 1, 870, 700]].forEach(([id, side, x, y]) => {
     const u = uni(id), fy = forkY(u.fork);
     GEOM[id] = [[{x:CX, y:fy}, {x:CX + side * 90, y:fy - 4}, {x:x - side * 120, y:y + 30}, {x, y}]];
-    br += `<g class="${cls([id])}">${curve({x:CX, y:fy}, {x:CX + side * 90, y:fy - 4}, {x:x - side * 120, y:y + 30}, {x, y}, true)}</g>`;
-    nodes += leaf(u, x, y, flatLabel(u, x + side * 22, y - 4, side < 0 ? "end" : "start"), ST[id]);
+    br += `<g class="${cls([id])}" style="--gd:.6s">${curve({x:CX, y:fy}, {x:CX + side * 90, y:fy - 4}, {x:x - side * 120, y:y + 30}, {x, y}, true)}</g>`;
+    nodes += leaf(u, x, y, flatLabel(u, x + side * 22, y - 4, side < 0 ? "end" : "start"), ST[id], 1.2);
   });
 
   const trunk = uni("616");
   $("#tree").innerHTML = `<defs><filter id="glow" filterUnits="userSpaceOnUse" x="-100" y="-200" width="1400" height="1400"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="trunkFade" gradientUnits="userSpaceOnUse" x1="0" y1="${TOP_Y + 130}" x2="0" y2="${TOP_Y - 20}"><stop offset="0" style="stop-color:var(--gold)"/><stop offset="1" style="stop-color:var(--strand);stop-opacity:.45"/></linearGradient>
+    <linearGradient id="stemFade" gradientUnits="userSpaceOnUse" x1="0" y1="${CY + 50}" x2="0" y2="${CY - 50}"><stop offset="0" style="stop-color:var(--strand);stop-opacity:.15"/><stop offset="1" style="stop-color:var(--gold)"/></linearGradient>
+    <radialGradient id="knot"><stop offset="0" style="stop-color:var(--strand);stop-opacity:.22"/><stop offset=".5" style="stop-color:var(--strand);stop-opacity:.08"/><stop offset="1" style="stop-color:var(--strand);stop-opacity:0"/></radialGradient>
     <radialGradient id="throne"><stop offset="0" stop-color="#e8bb57" stop-opacity=".5"/><stop offset="1" stop-color="#e8bb57" stop-opacity="0"/></radialGradient></defs>
-    ${STARS}
     <ellipse cx="${CX}" cy="${BASE_Y + 20}" rx="160" ry="44" fill="url(#throne)"/>
-    <g class="tree" filter="url(#glow)"><g class="${cls(["616"])}">${TRUNK}</g>${br}</g>
+    <g class="tree"><g class="trunk ${cls(["616"])}"><ellipse class="core" cx="${CX}" cy="${(BASE_Y + TOP_Y) / 2 + 10}" rx="70" ry="${(BASE_Y - TOP_Y) / 2 + 40}" fill="url(#knot)"/>${TRUNK.svg}</g>${br}</g>
     <text class="base" x="${CX}" y="${BASE_Y + 46}" text-anchor="middle">THE END OF TIME</text>
-    ${leaf(trunk, CX, 905, flatLabel(trunk, CX + 54, 901, "start"), ST["616"])}${nodes}`;
+    ${leaf(trunk, CX, 905, flatLabel(trunk, CX + 54, 901, "start"), ST["616"], .9)}${nodes}`;
 }
 
 /* ---------- panel ---------- */
@@ -593,7 +615,6 @@ const tip = $("#tip"), stage = $("#stage");
 const NS = "http://www.w3.org/2000/svg", VB0 = [0, -20, 1200, 1050], GROUND = 560, X0 = 110, X1 = 1090;
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let view = "tree", animating = false, detailId = null;
-const setVB = v => $("#tree").setAttribute("viewBox", v.map(n => n.toFixed(1)).join(" "));
 const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const tween = (ms, fn) => new Promise(res => {
@@ -615,46 +636,117 @@ function fitBox(pts) {
   w = Math.max(w, h * VB0[2] / VB0[3]);
   return [cx - w / 2, cy - h / 2, w, h];
 }
+// eases, named after GSAP's; expoOut and quintOut are the reveal and move curves sitereel.ai uses
+const expoOut = t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);   // ≈ cubic-bezier(.16,1,.3,1)
+const quintOut = t => 1 - Math.pow(1 - t, 5);                  // ≈ cubic-bezier(.23,1,.32,1)
+const inOut = ease;                                            // cubic in-out, for camera moves
+const seg = (p, a, b) => Math.min(1, Math.max(0, (p - a) / (b - a)));
+const lerp = (a, b, t) => a + (b - a) * t;
+// one master clock, like a GSAP timeline: every part reads the same progress, so the phases overlap
+// instead of stopping and starting
+const timeline = (ms, fn) => new Promise(res => {
+  const t0 = performance.now();
+  let done = false;
+  const finish = () => { if (!done) { done = true; fn(1); res(); } };
+  const step = now => { if (done) return; const p = Math.min(1, (now - t0) / ms); fn(p); p < 1 ? requestAnimationFrame(step) : finish(); };
+  requestAnimationFrame(step);
+  setTimeout(finish, ms + 400);
+});
+// the moving branch: a soft halo plus a crisp core, no SVG filter (filters re-render every frame and stutter)
 function morphPath() {
-  const m = document.createElementNS(NS, "path");
-  m.setAttribute("class", "morph"); m.setAttribute("filter", "url(#glow)");
-  $("#tree").appendChild(m);
-  return [m, P => m.setAttribute("d", "M" + P.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L"))];
+  const g = document.createElementNS(NS, "g");
+  g.setAttribute("class", "morph");
+  g.innerHTML = `<path class="m-glow"/><path class="m-core"/>`;
+  $("#fx").appendChild(g);
+  const paths = g.querySelectorAll("path");
+  return [g, P => { const d = "M" + P.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L"); paths.forEach(x => x.setAttribute("d", d)); }];
 }
+// Camera, split into layers so a frame never repaints the tree: #tree (and #sky) are drawn once and handed to
+// the GPU, which only scales, moves and fades them; the only thing redrawn each frame is the moving branch in
+// #fx, a small SVG laid exactly over the tree whose viewBox follows the camera. The tree looks slightly soft
+// while zoomed in (it is a scaled snapshot), but it is fading out by then and lands crisp at scale 1.
+let cam = null;
+function camStart() {
+  const tree = $("#tree"), fx = $("#fx"), r = tree.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+  Object.assign(fx.style, {left:`${r.left - sr.left + stage.scrollLeft}px`, top:`${r.top - sr.top + stage.scrollTop}px`, width:`${r.width}px`, height:`${r.height}px`});
+  fx.classList.add("on");
+  tree.classList.add("focusing");
+  cam = {s0:Math.min(r.width / VB0[2], r.height / VB0[3])};
+}
+// keepSky: inside a branch the stars stay pushed in, so going back can pull them out again
+function camEnd(keepSky) {
+  const tree = $("#tree");
+  tree.classList.remove("focusing");
+  tree.style.transform = tree.style.opacity = "";
+  if (!keepSky) $("#sky").style.transform = "";
+  $("#fx").classList.remove("on"); $("#fx").setAttribute("viewBox", VB0.join(" "));
+  cam = null;
+}
+const fade = v => { $("#tree").style.opacity = v.toFixed(3); };
 const flat = pts => pts.map((_, i) => ({x:X0 - 60 + (X1 - X0 + 120) * i / (pts.length - 1), y:GROUND}));
 const syncChrome = () => { $("#back").hidden = view !== "branch"; stage.classList.toggle("in-branch", view === "branch"); };
+// z: 0 = whole tree, 1 = zoomed onto the branch box bb
+function camera(bb, z, sky = true) {
+  const v = VB0.map((x, i) => lerp(x, bb[i], z)), s = VB0[2] / v[2], k = s * cam.s0;
+  // showing box v instead of VB0 = scale by s about the centre, then shift the box centre to the middle
+  const tx = k * (VB0[0] + VB0[2] / 2 - v[0] - v[2] / 2), ty = k * (VB0[1] + VB0[3] / 2 - v[1] - v[3] / 2);
+  $("#fx").setAttribute("viewBox", v.map(n => n.toFixed(1)).join(" "));
+  $("#tree").style.transform = `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) scale(${s.toFixed(4)})`;
+  // the stars drift a third as far, which reads as depth
+  if (sky) $("#sky").style.transform = `translate(${(tx / 3).toFixed(1)}px,${(ty / 3).toFixed(1)}px) scale(${(1 + (s - 1) / 3).toFixed(4)})`;
+}
+// The branch view is drawn at full-tree scale, so its ground line is placed where it will appear on screen
+// once the camera has zoomed onto bb: the zoom only ever goes one way, and the swap to the branch view is invisible.
+const inZoom = (bb, pts) => {
+  const s = VB0[2] / bb[2], c0x = VB0[0] + VB0[2] / 2, c0y = VB0[1] + VB0[3] / 2, bx = bb[0] + bb[2] / 2, by = bb[1] + bb[3] / 2;
+  return pts.map(q => ({x:bx + (q.x - c0x) / s, y:by + (q.y - c0y) / s}));
+};
+const mix = (a, b, k) => a.map((q, i) => ({x:lerp(q.x, b[i].x, k), y:lerp(q.y, b[i].y, k)}));
 
 async function enterBranch(id) {
   if (animating) return;
+  $("#tree").classList.remove("grow");
   renderTree();
   const segs = GEOM[id];
   if (!segs || REDUCED) { view = "branch"; renderFocus(id, true); syncChrome(); return; }
   animating = true;
-  const pts = sample(segs), tgt = flat(pts), bb = fitBox(pts), [m, draw] = morphPath(), svg = $("#tree");
-  draw(pts);
-  svg.classList.add("focusing");
-  await tween(520, t => setVB(VB0.map((v, i) => v + (bb[i] - v) * t)));
-  await tween(720, t => { draw(pts.map((p, i) => ({x:p.x + (tgt[i].x - p.x) * t, y:p.y + (tgt[i].y - p.y) * t}))); setVB(bb.map((v, i) => v + (VB0[i] - v) * t)); });
-  svg.classList.remove("focusing");
-  m.remove();
-  view = "branch"; renderFocus(id, true); syncChrome(); animating = false;
+  const pts = sample(segs), bb = fitBox(pts), tgt = inZoom(bb, flat(pts));
+  camStart(); fade(1);
+  const [m, draw] = morphPath();
+  // one push in: the camera eases onto the branch while the rest of the tree dissolves and the branch
+  // straightens out into the ground line of the branch view
+  await timeline(1150, p => {
+    fade(1 - expoOut(seg(p, 0, .4)));
+    camera(bb, inOut(p));
+    draw(mix(pts, tgt, inOut(seg(p, .12, .95))));
+  });
+  view = "branch"; renderFocus(id, true); syncChrome();
+  $("#tree").style.transform = ""; fade(1);
+  // hand-off: the moving line already sits exactly on the new ground line and dissolves into it, no hard cut
+  await timeline(420, p => { m.style.opacity = 1 - quintOut(p); });
+  m.remove(); camEnd(true); animating = false;
 }
 
 async function exitBranch() {
   if (animating || view !== "branch") return;
   view = "tree"; syncChrome(); tip.hidden = true;
-  const svg = $("#tree");
-  svg.classList.add("focusing");
+  const sky = !!$("#sky").style.transform;   // stars were pushed in on the way into this branch
+  camStart(); fade(0);
   renderTree();
   const segs = GEOM[S.sel];
-  if (!segs || REDUCED) { svg.classList.remove("focusing"); return; }
+  if (!segs || REDUCED) { camEnd(); return; }
   animating = true;
-  const pts = sample(segs), tgt = flat(pts), bb = fitBox(pts), [m, draw] = morphPath();
-  draw(tgt);
-  await tween(680, t => { draw(tgt.map((p, i) => ({x:p.x + (pts[i].x - p.x) * t, y:p.y + (pts[i].y - p.y) * t}))); setVB(VB0.map((v, i) => v + (bb[i] - v) * t)); });
-  svg.classList.remove("focusing");
-  await tween(520, t => setVB(bb.map((v, i) => v + (VB0[i] - v) * t)));
-  m.remove(); animating = false;
+  const pts = sample(segs), bb = fitBox(pts), tgt = inZoom(bb, flat(pts)), [m, draw] = morphPath();
+  camera(bb, 1, sky); draw(tgt);
+  // the reverse, one pull out: the line curls back into its branch while the camera eases back to the whole
+  // tree and the tree fades in around it
+  await timeline(1100, p => {
+    draw(mix(tgt, pts, inOut(seg(p, 0, .8))));
+    camera(bb, 1 - inOut(p), sky);
+    fade(expoOut(seg(p, .35, 1)));
+    m.style.opacity = 1 - seg(p, .8, 1);
+  });
+  m.remove(); camEnd(); animating = false;
 }
 
 function renderFocus(id, intro) {
@@ -666,7 +758,7 @@ function renderFocus(id, intro) {
     if (yn !== Infinity && yn !== lastYear && x - lastTick > 46) { ticks += `<line class="tick" x1="${x}" y1="${GROUND + 12}" x2="${x}" y2="${GROUND + 24}"/><text class="yt" x="${x}" y="${GROUND + 42}" text-anchor="middle">${yn}</text>`; lastTick = x; }
     if (yn !== Infinity) lastYear = yn;
     const lab = n <= 16 ? `<text class="nlbl" transform="translate(${x + 4} ${GROUND - 20}) rotate(-38)">${esc(e.t)}</text>` : "";
-    nodes += `<g class="node${S.watched[e.id] ? " seen" : ""}${e.id === detailId ? " sel" : ""}" data-id="${esc(e.id)}" tabindex="0" role="button" aria-label="${esc(e.t)}, set ${esc(e.y)}" style="--d:${intro ? Math.round(i * Math.min(22, 700 / n)) : 0}ms">
+    nodes += `<g class="node${S.watched[e.id] ? " seen" : ""}${e.id === detailId ? " sel" : ""}" data-id="${esc(e.id)}" tabindex="0" role="button" aria-label="${esc(e.t)}, set ${esc(e.y)}" style="--d:${intro ? Math.round(120 + i * Math.min(26, 520 / n)) : 0}ms">
       <circle class="hit" cx="${x}" cy="${GROUND}" r="${hitR.toFixed(1)}"/><circle class="ring" cx="${x}" cy="${GROUND}" r="7"/><circle class="core" cx="${x}" cy="${GROUND}" r="6"/>${lab}</g>`;
     // TVA-style: other timelines peel off the Sacred Timeline where Marvel's order slots them in
     if (u.id === "616") unis().filter(b => b.at === e.id).forEach(b => {
@@ -677,10 +769,9 @@ function renderFocus(id, intro) {
   const where = u.id === "616" ? "The Sacred Timeline, laid flat" : u.fork != null ? `Branched off the Sacred Timeline in ${u.fork}` : "A separate reality";
   $("#tree").innerHTML = `<defs><filter id="glow" filterUnits="userSpaceOnUse" x="-100" y="-200" width="1400" height="1400"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       <radialGradient id="floorg"><stop offset="0" stop-color="#e8bb57" stop-opacity=".16"/><stop offset="1" stop-color="#e8bb57" stop-opacity="0"/></radialGradient></defs>
-    ${STARS}
     <g class="focus${intro ? " intro" : ""}">
       <ellipse class="floor" cx="600" cy="${GROUND + 8}" rx="640" ry="80" fill="url(#floorg)"/>
-      <g filter="url(#glow)"><path class="ground-glow" d="M${X0 - 60} ${GROUND} L${X1 + 60} ${GROUND}"/><path class="ground" d="M${X0 - 60} ${GROUND} L${X1 + 60} ${GROUND}"/><path class="ground flow" d="M${X0 - 60} ${GROUND} L${X1 + 60} ${GROUND}"/>${twigs}</g>
+      <g><path class="ground-glow" d="M${X0 - 60} ${GROUND} L${X1 + 60} ${GROUND}"/><path class="ground" d="M${X0 - 60} ${GROUND} L${X1 + 60} ${GROUND}"/><path class="ground flow" d="M${X0 - 60} ${GROUND} L${X1 + 60} ${GROUND}"/>${twigs}</g>
       ${ticks}${nodes}
       <text class="ftitle" x="60" y="150">${esc(u.name)}</text>
       <text class="fdes" x="60" y="180">${esc(u.des)} · ${esc(where)} · ${n} title${n === 1 ? "" : "s"}</text>
@@ -689,13 +780,32 @@ function renderFocus(id, intro) {
 }
 
 /* ---------- energy transfer: a node fires and a beam carries it into the details panel ---------- */
+// episode guide for series: collapsed by default so the card stays short; data lives in episodes.js
+function epList(id, cls) {
+  const eps = typeof EPS !== "undefined" && EPS[id];
+  if (!eps) return "";
+  const multi = eps.some(e => e[0] !== eps[0][0]);
+  let s = "", season;
+  for (const [se, n, t, b] of eps) {
+    if (multi && se !== season) { season = se; s += `<li class="ep-s">Season ${se}</li>`; }
+    s += `<li><span class="ep-n">${n}</span><div><b>${esc(t)}</b>${b ? `<p>${esc(b)}</p>` : ""}</div></li>`;
+  }
+  return `<details class="${cls}"><summary>Episodes <span>${eps.length}</span></summary><ol>${s}</ol></details>`;
+}
+// re-renders (marking watched, sync) replace the markup; keep the episode list open if it was
+const keepOpen = (box, id, sel, render) => {
+  const open = box.dataset.id === id && box.querySelector(sel)?.open;
+  render(); box.dataset.id = id;
+  if (open) box.querySelector(sel).open = true;
+};
+
 function renderDetail() {
   const box = $("#detail"), u = uni(S.sel), all = entries(u), e = detailId && all.find(x => x.id === detailId);
   if (!e) { box.innerHTML = ""; return; }
   const pos = [...all].sort((a, b) => a.ord - b.ord).indexOf(e) + 1, seen = S.watched[e.id], soon = e.rel && e.rel > TODAY;
   const also = unis().filter(x => x.id !== u.id && entries(x).some(y => y.id === e.id));
   const ni = u.id === "616" ? NARRATIVE.items.findIndex(([t]) => t[0] !== "@" && slug(t) === e.id) : -1, nn = ni >= 0 ? NARRATIVE.items[ni] : null;
-  box.innerHTML = `<div class="detail k-${e.k}${seen ? " seen" : ""}">
+  keepOpen(box, e.id, ".dt-eps", () => box.innerHTML = `<div class="detail k-${e.k}${seen ? " seen" : ""}">
     <div class="dt-top"><span class="kd"></span>${TYPE[e.k] || "Title"} · ${esc(u.name)}<button type="button" class="dt-x" data-act="close-detail" aria-label="Close details">×</button></div>
     <h3>${esc(e.t)}</h3>
     ${typeof SYN !== "undefined" && SYN[e.id] ? `<p class="dt-syn">${esc(SYN[e.id])}</p>` : ""}
@@ -707,8 +817,9 @@ function renderDetail() {
     </dl>
     ${nn && nn[2] ? `<p class="dt-note">${esc(nn[2])}</p>` : ""}
     ${also.length ? `<p class="dt-also">Also appears in ${also.map(x => `<button type="button" class="uchip" data-go="${esc(x.id)}">${esc(x.name)}</button>`).join(", ")}</p>` : ""}
+    ${epList(e.id, "dt-eps")}
     <div class="dt-act"><button class="btn ${seen ? "ghost" : "primary"}" type="button" data-act="watch" data-id="${esc(e.id)}">${seen ? "Watched ✓" : "Mark watched"}</button><button class="btn ghost" type="button" data-show="${esc(e.id)}">Show in list</button></div>
-  </div>`;
+  </div>`);
 }
 
 function showInList(id) {
@@ -896,6 +1007,9 @@ tl.addEventListener("drop", e => {
 });
 tl.addEventListener("dragend", () => { dragId = null; clearOver(); });
 
+// first paint: the tree grows up out of the End of Time, once per page load
+if (!REDUCED) { $("#tree").classList.add("grow"); setTimeout(() => $("#tree").classList.remove("grow"), 3600); }
+$("#sky").innerHTML = STARS;
 renderAll();
 
 // phones: start the sideways-scrolling tree centred on the trunk

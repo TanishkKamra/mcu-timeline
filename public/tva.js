@@ -151,7 +151,7 @@ function renderCase() {
   const fresh = lastCase !== caseId || lastUni !== u.id;
   lastCase = caseId; lastUni = u.id;
   const slamNow = slam; slam = false;
-  $("#tCase").innerHTML = `<div class="folder${fresh ? " deliver" : ""}">
+  keepOpen($("#tCase"), e.id, ".pp-eps", () => $("#tCase").innerHTML = `<div class="folder${fresh ? " deliver" : ""}">
     <div class="folder-tab">Case № ${pad(pos)} / ${pad(all.length)}</div>
     <div class="paper k-${e.k}">
       <div class="pp-head"><span>Form TV-1185 · Event record</span><span>${esc(u.des)}</span></div>
@@ -167,10 +167,11 @@ function renderCase() {
       </dl>
       ${nn && nn[2] ? `<p class="pp-note">Advisory: ${esc(nn[2])}</p>` : ""}
       ${also.length ? `<p class="pp-also">Cross-filed under ${also.map(x => `<button type="button" class="pp-link" data-u="${esc(x.id)}">${esc(x.name)}</button>`).join(", ")}</p>` : ""}
+      ${epList(e.id, "pp-eps")}
       <div class="stamp ${seen ? "ok" : "pend"}${slamNow ? " slam" : ""}">${seen ? "Processed" : "Pending review"}</div>
       <div class="pp-act"><button type="button" class="stampbtn" data-tact="stamp">${seen ? "Revoke stamp" : "Stamp as processed"}</button></div>
     </div>
-  </div>`;
+  </div>`);
 }
 
 function renderAgent() {
