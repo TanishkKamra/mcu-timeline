@@ -212,6 +212,28 @@ const UNIS = [
 
 const LIMBS = ["Before the MCU","20th Century Fox","Marvel Studios","Sony Pictures","Your universes"];
 const TYPE = {F:"Film",S:"Series",A:"Animated",E:"Episode",X:"Special",O:"One-Shot",T:"TV film"};
+
+// Fan "Narrative Order" (r/marvelstudios post, updated 08/10/26): [title, optional, note]. "@branch Title" points into another universe.
+const NARRATIVE = {
+  credit: `<b>Narrative order</b> is a fan-made viewing order built for story flow, from the r/marvelstudios “Narrative Order” post (<a href="https://www.reddit.com/r/marvelstudios/comments/14lccgy/" target="_blank" rel="noopener noreferrer">original post</a>, updated 08/10/26). It's an alternative to Marvel's official order, not a correction.`,
+  items: [
+    ["Captain America: The First Avenger"], ["Iron Man"], ["The Incredible Hulk"], ["Iron Man 2"], ["Thor"], ["The Avengers"],
+    ["Thor: The Dark World"], ["Guardians of the Galaxy"], ["Captain America: The Winter Soldier"], ["Iron Man 3"],
+    ["Guardians of the Galaxy Vol. 2"], ["I Am Groot (Season 1)", 1], ["I Am Groot (Season 2)", 1],
+    ["Avengers: Age of Ultron"], ["Doctor Strange"], ["Ant-Man"], ["Captain America: Civil War"],
+    ["Black Widow", 0, "Save its post-credit scene for after Avengers: Endgame."], ["Black Panther"], ["Spider-Man: Homecoming"],
+    ["Ant-Man and the Wasp", 0, "Save its post-credit scene for after Avengers: Infinity War."], ["Thor: Ragnarok"],
+    ["Avengers: Infinity War"], ["Captain Marvel"], ["Avengers: Endgame"], ["WandaVision"], ["The Falcon and the Winter Soldier"],
+    ["Spider-Man: Far From Home"], ["Spider-Man: No Way Home"], ["Hawkeye"], ["The Guardians of the Galaxy Holiday Special"],
+    ["@tva Loki (Season 1)"], ["@whatif What If...? Season 1", 1], ["@whatif What If...? Season 2", 1], ["@whatif What If...? Season 3", 1],
+    ["Ant-Man and the Wasp: Quantumania"], ["@tva Loki (Season 2)"], ["Deadpool & Wolverine"], ["Thor: Love and Thunder"],
+    ["Guardians of the Galaxy Vol. 3"], ["Black Panther: Wakanda Forever"], ["Moon Knight", 1], ["Ironheart"],
+    ["Shang-Chi and the Legend of the Ten Rings"], ["Doctor Strange in the Multiverse of Madness"], ["Agatha All Along"], ["Eternals"],
+    ["She-Hulk: Attorney at Law"], ["Ms. Marvel"], ["The Marvels"], ["Secret Invasion", 1], ["Echo", 1],
+    ["Daredevil: Born Again (Season 1)", 1], ["Daredevil: Born Again (Season 2)", 1], ["Wonder Man"], ["Captain America: Brave New World"],
+    ["Thunderbolts*"], ["@828 The Fantastic Four: First Steps"], ["The Punisher: One Last Kill"], ["Spider-Man: Brand New Day"],
+  ],
+};
 const TODAY = new Date().toISOString().slice(0, 10);
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 document.querySelectorAll(".kk").forEach(k => k.textContent = MAC ? "⌘K" : "Ctrl K");
@@ -377,8 +399,8 @@ function card(e, i, n, my) {
   return `<li class="e k-${e.k}${seen ? " seen" : ""}" data-id="${esc(e.id)}" draggable="${my}">
     <div class="row">
       <button type="button" class="eye" data-act="watch" aria-pressed="${!!seen}" aria-label="${seen ? "Watched" : "Mark watched"}: ${esc(e.t)}">${CHECK}</button>
-      <div><div class="t">${my ? `<span class="yv">${i + 1}.</span> ` : ""}${esc(e.t)}</div>
-        <div class="sub"><span class="kd"></span>${TYPE[e.k] || "Title"} · ${soon ? "Out " : ""}${fmtDate(e.rel)}${soon ? ` <span class="soon">Upcoming</span>` : ""}</div></div>
+      <div><div class="t">${e.num ? `<span class="yv">${e.num}.</span> ` : my ? `<span class="yv">${i + 1}.</span> ` : ""}${esc(e.t)}</div>
+        <div class="sub"><span class="kd"></span>${TYPE[e.k] || "Title"} · ${soon ? "Out " : ""}${fmtDate(e.rel)}${soon ? ` <span class="soon">Upcoming</span>` : ""}${e.opt ? ` <span class="soon opt">Optional</span>` : ""}</div>${e.note ? `<div class="sub vnote">${esc(e.note)}</div>` : ""}</div>
       <div class="right">
         <div class="acts">
           ${my ? `<button type="button" data-act="up" aria-label="Move ${esc(e.t)} up"${i ? "" : " disabled"}>↑</button><button type="button" data-act="down" aria-label="Move ${esc(e.t)} down"${i < n - 1 ? "" : " disabled"}>↓</button>` : ""}
@@ -419,7 +441,9 @@ function renderPanel(focusSel) {
 
   // up next: first unwatched, released title in story order
   const seen = all.filter(e => S.watched[e.id]).length, p = all.length ? seen / all.length : 0;
-  const nx = [...all].sort((a, b) => a.ord - b.ord).find(e => !S.watched[e.id] && !(e.rel && e.rel > TODAY));
+  const narr = S.mode === "narrative" && u.id === "616";
+  const seq = narr ? NARRATIVE.items.filter(([r]) => r[0] !== "@").map(([t]) => all.find(e => e.id === slug(t))).filter(Boolean) : [...all].sort((a, b) => a.ord - b.ord);
+  const nx = seq.find(e => !S.watched[e.id] && !(e.rel && e.rel > TODAY));
   $("#next").innerHTML = nx
     ? `<div class="next k-${nx.k}">${ring(p, Math.round(p * 100) + "%")}<div><small>${seen ? "Up next" : "Start here"} · ${seen} of ${all.length} watched</small><strong>${esc(nx.t)}</strong>
         <div class="sub"><span class="kd"></span>${TYPE[nx.k]} · set ${esc(nx.y)}</div></div>
@@ -431,25 +455,48 @@ function renderPanel(focusSel) {
   const my = S.mode === "my";
   $("#tl").classList.toggle("my", my);
 
+  const mode = S.mode === "narrative" && !narr ? "story" : S.mode;
+  let html = "";
+  if (narr) {
+    const placed = new Set();
+    let n = 0;
+    html = `<li class="credit">${NARRATIVE.credit}</li>`;
+    NARRATIVE.items.forEach(([ref, opt, note]) => {
+      n++;
+      if (ref[0] === "@") {
+        const sp = ref.indexOf(" "), go = ref.slice(1, sp);
+        html += `<li class="fork"><button type="button" data-go="${esc(go)}">↳ ${n}. ${esc(ref.slice(sp + 1))}${opt ? " (optional)" : ""}, on the ${esc(uni(go).name)} branch</button></li>`;
+        return;
+      }
+      const e = all.find(x => x.id === slug(ref));
+      if (!e) return;
+      placed.add(e.id);
+      if (!(S.hideSeen && S.watched[e.id])) html += card({...e, num:n, opt, note}, 0, 0, false);
+    });
+    const rest = all.filter(e => !placed.has(e.id) && !(S.hideSeen && S.watched[e.id])).sort((a, b) => a.ord - b.ord);
+    if (rest.length) html += `<li class="yr">Not placed in this order</li>` + rest.map(e => card(e, 0, 0, false)).join("");
+    visible = [];
+  } else {
   const list = all.filter(e => !(S.hideSeen && S.watched[e.id])).sort(
-    S.mode === "story" ? (a, b) => a.ord - b.ord
-    : S.mode === "release" ? (a, b) => (a.rel || "9999").localeCompare(b.rel || "9999")
+    mode === "story" ? (a, b) => a.ord - b.ord
+    : mode === "release" ? (a, b) => (a.rel || "9999").localeCompare(b.rel || "9999")
     : (a, b) => order.indexOf(a.id) - order.indexOf(b.id));
   visible = list.map(e => e.id);
   // rows where Marvel's own timeline slots another universe into the trunk
-  const forks = u.id === "616" && S.mode === "story" ? unis().filter(x => x.at) : [];
+  const forks = u.id === "616" && mode === "story" ? unis().filter(x => x.at) : [];
   const forkRow = x => `<li class="fork"><button type="button" data-go="${esc(x.id)}">↳ ${esc(x.name)} ${x.fork != null ? `branches off here (${esc(x.fork)})` : "fits here in Marvel's timeline"}</button></li>`;
-  let html = "", last = null, lastNum = -Infinity;
+  let last = null, lastNum = -Infinity;
   list.forEach((e, i) => {
     const n = yearNum(e.y);
     let key = null;
     // a year header never steps backwards; titles with an earlier start stay under the current header
-    if (S.mode === "story") key = n === Infinity ? esc(e.y || "Undated") : n > lastNum ? n : null;
-    else if (S.mode === "release") key = e.rel ? e.rel.slice(0, 4) : "Unreleased";
+    if (mode === "story") key = n === Infinity ? esc(e.y || "Undated") : n > lastNum ? n : null;
+    else if (mode === "release") key = e.rel ? e.rel.slice(0, 4) : "Unreleased";
     if (key !== null && key !== last) { html += `<li class="yr">${key}</li>`; last = key; lastNum = typeof key === "number" ? key : -Infinity; }
     html += card(e, i, list.length, my);
     forks.filter(x => x.at === e.id).forEach(x => html += forkRow(x));
   });
+  }
   $("#tl").innerHTML = html || `<li class="empty">${all.length ? "Everything here is watched. Turn off Hide watched to see it all." : "No titles yet. Add one below."}</li>`;
 
   const removedHere = S.removed.filter(k => k.startsWith(u.id + ":")).length;
@@ -556,7 +603,7 @@ document.addEventListener("keydown", e => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); pal.open ? pal.close() : openPal(); return; }
   if (pal.open || e.metaKey || e.ctrlKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
   if (e.key === "/") { e.preventDefault(); openPal(); }
-  else if (["1", "2", "3"].includes(e.key)) { S.mode = ["story", "release", "my"][+e.key - 1]; renderPanel(); }
+  else if (["1", "2", "3", "4"].includes(e.key)) { S.mode = ["story", "release", "my", "narrative"][+e.key - 1]; renderPanel(); }
 });
 
 $("#addT").addEventListener("submit", e => {
