@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<title>MCU Timeline Sandbox</title>
+<meta name="description" content="Every Marvel film and series on one tree: 24 universes in Marvel's official story order. Track what you've watched, branch by branch. Free, unofficial fan project.">
+<meta name="theme-color" content="#040706">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="MCU Timeline Sandbox">
+<meta property="og:description" content="Every Marvel film and series on one tree: 24 universes in Marvel's official story order. Track what you've watched, branch by branch. Free, unofficial fan project.">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23040706'/%3E%3Cpath d='M16 28V12M16 16C12 13 9 9 8 5M16 16c4-3 7-7 8-11M16 21c-3-2-6-3-9-3M16 21c3-2 6-3 9-3' stroke='%234fe08e' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='28' r='2.5' fill='%23e8bb57'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<noscript><p style="padding:24px;color:#e9f0ec;background:#040706">This timeline needs JavaScript turned on.</p></noscript>
+<div class="app">
+  <section class="stage" id="stage" aria-label="Yggdrasil, the tree of timelines">
+    <div class="brand"><i></i>Yggdrasil <span>MCU Timeline Sandbox</span></div>
+    <svg id="tree" viewBox="0 -20 1200 1050" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Universes, pick one to open its timeline"></svg>
+    <div class="tip" id="tip" hidden></div>
+  </section>
+
+  <header class="hero">
+    <div class="news"><b>New</b>VisionQuest added to the Sacred Timeline</div>
+    <h1>Every Marvel story.<br><span>One tree.</span></h1>
+    <p class="lede"><b id="nTitles">185</b> films and series across <b id="nUnis">24</b> universes, in Marvel's official story order. Track what you've seen, branch by branch.</p>
+    <div class="cta">
+      <button class="btn primary" type="button" id="start">Start the Sacred Timeline</button>
+      <button class="btn ghost" type="button" data-pal>Search <kbd class="kk">Ctrl K</kbd></button>
+    </div>
+    <div class="meter" id="meter"></div>
+  </header>
+
+  <main class="panel">
+    <div class="crumb"><span id="crumb"></span><select id="uSel" aria-label="Switch universe"></select></div>
+    <div class="uhead" id="uHead"></div>
+    <div id="next"></div>
+    <div class="ctrl">
+      <div class="seg" id="mode" role="group" aria-label="Order">
+        <button type="button" data-mode="story" title="Story order (1)">Story</button>
+        <button type="button" data-mode="release" title="Release order (2)">Release</button>
+        <button type="button" data-mode="my" title="Your order (3)">Mine</button>
+      </div>
+      <button class="sbtn" type="button" data-pal>Find a title <kbd class="kk">Ctrl K</kbd></button>
+      <label class="switch"><input type="checkbox" id="f-seen" role="switch"> Hide watched</label>
+    </div>
+    <ol class="tl" id="tl"></ol>
+
+    <details class="add">
+      <summary>Add a title to this universe</summary>
+      <form class="form" id="addT">
+        <label>Title<input id="t-t" required placeholder="Avengers: Secret Wars"></label>
+        <label>Type<select id="t-k"><option value="F">Film</option><option value="S">Series</option><option value="A">Animated</option><option value="X">Special</option></select></label>
+        <label>In-universe year<input id="t-y" placeholder="2028"></label>
+        <label>Release date<input id="t-rel" type="date"></label>
+        <button class="btn primary" type="submit">Add title</button>
+      </form>
+    </details>
+    <details class="add">
+      <summary>Grow a new universe</summary>
+      <form class="form" id="addU">
+        <label>Name<input id="u-n" required placeholder="Spider-Gwen's world"></label>
+        <label>Designation<input id="u-d" placeholder="Earth-65"></label>
+        <label>Branches off in<input id="u-f" type="number" min="1" max="3000" placeholder="Empty if separate"></label>
+        <label style="grid-column:1/-1">Note<input id="u-note" placeholder="What makes this reality different"></label>
+        <button class="btn primary" type="submit">Grow branch</button>
+      </form>
+    </details>
+
+    <footer>
+      <p>The Sacred Timeline follows Marvel's own Disney+ Complete Timeline (June 2026) and the official 2023 timeline book; newer titles use Marvel's statements. Other universes use on-screen dates. Release dates are cross-checked against Wikipedia, Wikidata and TVmaze. A dotted year is a best estimate where no official date exists.</p>
+      <p>Shortcuts: <kbd class="kk">Ctrl K</kbd> search, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> change order. Watch marks and edits stay in this browser.</p>
+      <p>Unofficial fan project. Not affiliated with or endorsed by Marvel Studios or The Walt Disney Company. All titles and characters are trademarks of their respective owners.</p>
+      <div class="rowx" id="foot"></div>
+    </footer>
+  </main>
+</div>
+
+<dialog id="pal" aria-label="Search titles and universes">
+  <input id="pq" type="text" placeholder="Search titles and universes" autocomplete="off" aria-controls="pres">
+  <ul id="pres" role="listbox"></ul>
+  <div class="pfoot"><span><kbd>↑</kbd> <kbd>↓</kbd> move</span><span><kbd>↵</kbd> open</span><span><kbd>esc</kbd> close</span></div>
+</dialog>
+<div id="toast" role="status" aria-live="polite" hidden><span id="toastMsg"></span><button type="button" id="undo">Undo</button></div>
+<script src="app.js"></script>
+</body>
+</html>
