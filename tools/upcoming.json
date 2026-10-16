@@ -1,0 +1,74 @@
+[
+ {
+  "kind": "tv",
+  "tmdb": 138503,
+  "season": 2,
+  "t": "Your Friendly Neighborhood Spider-Man (Season 2)",
+  "slug": "yourfriendlyneighborhoodspidermanseason2",
+  "k": "A",
+  "u": "yfnsm",
+  "rel": "2027-01-13",
+  "syn": "Peter Parker is on his way to becoming a hero, but his path to get there is anything but ordinary.",
+  "art": true
+ },
+ {
+  "kind": "movie",
+  "tmdb": 1003598,
+  "season": null,
+  "t": "Avengers: Secret Wars",
+  "slug": "avengerssecretwars",
+  "k": "F",
+  "u": "616",
+  "rel": "2027-12-15",
+  "syn": "An upcoming film in Phase Six of the Marvel Cinematic Universe (MCU) and the finale of The Multiverse Saga.",
+  "art": true
+ },
+ {
+  "kind": "movie",
+  "tmdb": 1293690,
+  "season": null,
+  "t": "Untitled X-Men Film",
+  "slug": "untitledxmenfilm",
+  "k": "F",
+  "u": "616",
+  "rel": "2028-05-04",
+  "syn": "A film set in the Marvel Cinematic Universe (MCU) based on the Marvel Comics team. Plot TBA.",
+  "art": true
+ },
+ {
+  "kind": "movie",
+  "tmdb": 1738010,
+  "season": null,
+  "t": "Ghost Rider (2028)",
+  "slug": "ghostrider2028",
+  "k": "F",
+  "u": "616",
+  "rel": "2028-07-27",
+  "syn": "A film set in the Marvel Cinematic Universe (MCU) based on the Marvel Comics character of the same name. Plot TBA.",
+  "art": true
+ },
+ {
+  "kind": "movie",
+  "tmdb": 1386618,
+  "season": null,
+  "t": "Black Panther 3",
+  "slug": "blackpanther3",
+  "k": "F",
+  "u": "616",
+  "rel": "2028-12-13",
+  "syn": "T'Challa's son, T'Challa, comes of age with eyes on the crown of Wakanda.",
+  "art": true
+ },
+ {
+  "kind": "tv",
+  "tmdb": 337844,
+  "season": null,
+  "t": "Zodiac",
+  "slug": "zodiac",
+  "k": "S",
+  "u": "616",
+  "rel": "",
+  "syn": "A spy thriller set in the Marvel Cinematic Universe (MCU). Plot TBA.",
+  "art": true
+ }
+]

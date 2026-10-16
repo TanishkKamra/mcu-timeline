@@ -209,7 +209,7 @@ function renderCase() {
       <div class="pp-head"><span>Form TV-1185 · Event record</span><span>${esc(u.des)}</span></div>
       ${artImg(e.id, "pp-photo")}
       <h3 class="pp-title">${esc(e.t)}</h3>
-      ${typeof SYN !== "undefined" && SYN[e.id] ? `<p class="pp-syn"><b>Summary</b> ${esc(SYN[e.id])}</p>` : ""}
+      ${synOf(e.id) ? `<p class="pp-syn"><b>Summary</b> ${esc(synOf(e.id))}</p>` : ""}
       <dl class="pp-fields">
         <div><dt>Classification</dt><dd>${TYPE[e.k] || "Title"}</dd></div>
         <div><dt>Temporal coordinates</dt><dd>${esc(e.y || "Unknown")}${e.c === "e" ? " (est.)" : ""}</dd></div>
@@ -234,7 +234,8 @@ function renderAgent() {
 
 const caseFor = u => {
   const all = story(u);
-  return all.some(e => e.id === detailId) ? detailId : (upNext(u) || all[0])?.id ?? null;
+  // same title as the classic view's Up next, Films / Series filter included
+  return all.some(e => e.id === detailId) ? detailId : (upNext(u, entries(u).filter(kindOk)) || all[0])?.id ?? null;
 };
 function render(boot) {
   if (!on) return;
