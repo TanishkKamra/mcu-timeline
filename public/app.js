@@ -242,6 +242,22 @@ const KEY = "mcu-yggdrasil-v2";
 const DEF = () => ({sel:"616", mode:"story", kind:"all", hideSeen:false, watched:{}, edits:{}, removed:[], order:{}, cItems:{}, cUnis:[]});
 let S;
 try { S = {...DEF(), ...JSON.parse(localStorage.getItem(KEY) || "{}")}; } catch { S = DEF(); }
+// A title that was auto-added and later placed by hand changes id: move its watch mark, removal, edits and
+// custom order position to the new id (UP_ALIASES from upcoming.js). Runs on load and on every sync.
+function migrateIds(s) {
+  const map = typeof UP_ALIASES !== "undefined" ? UP_ALIASES : {};
+  if (!Object.keys(map).length) return s;
+  const to = id => { let n = id; for (let hop = 0; map[n] && hop < 10; hop++) n = map[n]; return n; };
+  const key = k => { const i = String(k).indexOf(":"); return i < 0 ? k : k.slice(0, i + 1) + to(k.slice(i + 1)); };
+  for (const id of Object.keys(s.watched || {})) { const n = to(id); if (n !== id) { s.watched[n] ||= s.watched[id]; delete s.watched[id]; } }
+  s.removed = [...new Set((s.removed || []).map(key))];
+  const ed = {};   // if both the old and the new id have edits, the new id's win
+  for (const [k, v] of Object.entries(s.edits || {})) { const n = key(k); if (n === k || !(n in ed)) ed[n] = v; }
+  s.edits = ed;
+  for (const u in s.order || {}) s.order[u] = [...new Set(s.order[u].map(to))];
+  return s;
+}
+migrateIds(S);
 const hash = decodeURIComponent(location.hash.slice(1));
 let editing = null, confirming = null;
 // what syncs to the cloud: progress and edits, not view settings
@@ -265,8 +281,8 @@ if (typeof UPCOMING !== "undefined") {
     ...Object.values(S.cItems || {}).flat().map(e => slug(e.t || ""))]);
   for (const f of UPCOMING) {
     const home = UNIS.find(u => u.id === f.u) || UNIS.find(u => u.id === "616");
-    if (listed.has(f.slug) || slug(f.t) !== f.slug || !TYPE[f.k]) continue;
-    home.items.push([f.t, f.k, f.rel || "", "TBA", "e"]); listed.add(f.slug);
+    if (listed.has(f.slug) || listed.has(slug(f.t)) || !TYPE[f.k]) continue;
+    home.items.push([f.t, f.k, f.rel || "", "TBA", "e", undefined, f.slug]); listed.add(f.slug);   // keeps its first id
     if (f.syn) upSyn[f.slug] = f.syn;
     if (f.tv) upSeries.add(f.slug);
     if (f.art && typeof ART !== "undefined") ART.add(f.slug);
@@ -280,7 +296,7 @@ const uni = id => unis().find(u => u.id === id);
 if (uni(hash)) S.sel = hash;
 
 function entries(u) {
-  const base = (u.items || []).map(([t, k, rel, y, c, f], ord) => ({id:slug(t), t, k, rel, y, c, f, ord, base:true}))
+  const base = (u.items || []).map(([t, k, rel, y, c, f, id], ord) => ({id:id || slug(t), t, k, rel, y, c, f, ord, base:true}))
     .filter(e => !S.removed.includes(u.id + ":" + e.id));
   const all = base.concat((S.cItems[u.id] || []).map(e => ({...e, c:"e"})));
   all.forEach(e => Object.assign(e, S.edits[u.id + ":" + e.id] || {}));
@@ -1170,7 +1186,7 @@ if (stage.scrollWidth > stage.clientWidth) stage.scrollLeft = (stage.scrollWidth
 // hooks for sync.js (optional Google sign-in)
 window.mcuApp = {
   get: () => S,
-  set(s) { S = {...DEF(), ...s}; editing = null; confirming = null; lastData = syncData(S); renderAll(); },
+  set(s) { S = migrateIds({...DEF(), ...s}); editing = null; confirming = null; lastData = syncData(S); renderAll(); },
   toast,
   onSave: null,
 };
