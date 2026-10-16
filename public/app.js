@@ -423,11 +423,21 @@ function renderTree() {
 let visible = [];
 const CHECK = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>`;
 
+// the title to watch next: first unwatched, released one in story order (or the fan Narrative order).
+// The classic "Up next" card and the TVA terminal's default case both use it, so they never disagree.
+function upNext(u, all = entries(u)) {
+  const seq = S.mode === "narrative" && u.id === "616"
+    ? NARRATIVE.items.filter(([r]) => r[0] !== "@").map(([t]) => all.find(e => e.id === slug(t))).filter(Boolean)
+    : [...all].sort((a, b) => a.ord - b.ord);
+  return seq.find(e => !S.watched[e.id] && !(e.rel && e.rel > TODAY));
+}
+
 function card(e, i, n, my) {
   const seen = S.watched[e.id], soon = e.rel && e.rel > TODAY;
-  return `<li class="e k-${e.k}${seen ? " seen" : ""}" data-id="${esc(e.id)}" draggable="${my}">
+  return `<li class="e k-${e.k}${seen ? " seen" : ""}${rowObs && !shownRows.has(e.id) ? " rv" : ""}" data-id="${esc(e.id)}" draggable="${my}">
     <div class="row">
       <button type="button" class="eye" data-act="watch" aria-pressed="${!!seen}" aria-label="${seen ? "Watched" : "Mark watched"}: ${esc(e.t)}">${CHECK}</button>
+      <span class="th" aria-hidden="true">${typeof ART !== "undefined" && ART.has(e.id) ? `<img src="art/${e.id}-160.webp" alt="" width="160" height="90" loading="lazy" decoding="async">` : ""}</span>
       <div><div class="t">${e.num ? `<span class="yv">${e.num}.</span> ` : my ? `<span class="yv">${i + 1}.</span> ` : ""}${esc(e.t)}</div>
         <div class="sub"><span class="kd"></span>${TYPE[e.k] || "Title"} · ${soon ? "Out " : ""}${fmtDate(e.rel)}${soon ? ` <span class="soon">Upcoming</span>` : ""}${e.opt ? ` <span class="soon opt">Optional</span>` : ""}</div>${e.note ? `<div class="sub vnote">${esc(e.note)}</div>` : ""}</div>
       <div class="right">
@@ -449,7 +459,8 @@ function renderHero() {
   const w = [...ids].filter(id => S.watched[id]).length;
   $("#nTitles").textContent = ids.size;
   $("#nUnis").textContent = unis().length;
-  $("#meter").innerHTML = `<i><b style="width:${ids.size ? w / ids.size * 100 : 0}%"></b></i><span>${w ? `${w} of ${ids.size} watched across the multiverse` : "Nothing watched yet. Your progress shows up on the tree."}</span>`;
+  $("#meter").hidden = !w;
+  $("#meter").innerHTML = `<i><b style="width:${ids.size ? w / ids.size * 100 : 0}%"></b></i><span>${w} of ${ids.size} watched across the multiverse</span>`;
 }
 
 function renderPanel(focusSel) {
@@ -471,13 +482,12 @@ function renderPanel(focusSel) {
   // up next: first unwatched, released title in story order
   const seen = all.filter(e => S.watched[e.id]).length, p = all.length ? seen / all.length : 0;
   const narr = S.mode === "narrative" && u.id === "616";
-  const seq = narr ? NARRATIVE.items.filter(([r]) => r[0] !== "@").map(([t]) => all.find(e => e.id === slug(t))).filter(Boolean) : [...all].sort((a, b) => a.ord - b.ord);
-  const nx = seq.find(e => !S.watched[e.id] && !(e.rel && e.rel > TODAY));
-  $("#next").innerHTML = nx
-    ? `<div class="next k-${nx.k}">${ring(p, Math.round(p * 100) + "%")}<div><small>${seen ? "Up next" : "Start here"} · ${seen} of ${all.length} watched</small><strong>${esc(nx.t)}</strong>
+  const nx = upNext(u, all);
+  keepOpen($("#next"), nx?.id || "", "details", () => $("#next").innerHTML = nx
+    ? `<div class="next k-${nx.k}">${artImg(nx.id, "dt-art")}${ring(p, Math.round(p * 100) + "%")}<div><small>${seen ? "Up next" : "Start here"} · ${seen} of ${all.length} watched</small><strong>${esc(nx.t)}</strong>
         <div class="sub"><span class="kd"></span>${TYPE[nx.k]} · set ${esc(nx.y)}</div></div>
         <button class="btn primary" type="button" data-act="watch" data-id="${esc(nx.id)}">Mark watched</button></div>`
-    : all.length ? `<div class="next">${ring(1, "100%")}<div><small>Universe complete</small><strong>You've seen everything here.</strong><div class="sub">Pick another branch on the tree.</div></div></div>` : "";
+    : all.length ? `<div class="next">${ring(1, "100%")}<div><small>Universe complete</small><strong>You've seen everything here.</strong><div class="sub">Pick another branch on the tree.</div></div></div>` : "");
 
   document.querySelectorAll("#mode button").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === S.mode));
   $("#f-seen").checked = S.hideSeen;
@@ -527,6 +537,7 @@ function renderPanel(focusSel) {
   });
   }
   $("#tl").innerHTML = html || `<li class="empty">${all.length ? "Everything here is watched. Turn off Hide watched to see it all." : "No titles yet. Add one below."}</li>`;
+  revealRows();
 
   const removedHere = S.removed.filter(k => k.startsWith(u.id + ":")).length;
   $("#foot").innerHTML = (removedHere ? `<button class="btn ghost" type="button" data-act="restore">Restore ${removedHere} removed</button>` : "")
@@ -615,6 +626,22 @@ const tip = $("#tip"), stage = $("#stage");
 const NS = "http://www.w3.org/2000/svg", VB0 = [0, -20, 1200, 1050], GROUND = 560, X0 = 110, X1 = 1090;
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let view = "tree", animating = false, detailId = null;
+
+// Timeline rows rise into place the first time they scroll into view (IntersectionObserver, no scroll
+// listeners). card() only marks rows not yet revealed (.rv), so a re-render never replays one.
+const shownRows = new Set();
+const rowObs = "IntersectionObserver" in window && !REDUCED ? new IntersectionObserver(es => {
+  es.filter(en => en.isIntersecting).forEach((en, i) => {
+    const li = en.target;
+    li.style.transitionDelay = `${Math.min(i, 8) * 40}ms`;
+    li.classList.add("shown"); shownRows.add(li.dataset.id); rowObs.unobserve(li);
+  });
+}, {rootMargin:"0px 0px -6% 0px"}) : null;
+function revealRows() {
+  if (!rowObs) return;
+  rowObs.disconnect();   // the previous render's rows are gone; let the observer drop them
+  document.querySelectorAll("#tl li.rv").forEach(li => rowObs.observe(li));
+}
 const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const tween = (ms, fn) => new Promise(res => {
@@ -786,26 +813,43 @@ function epList(id, cls) {
   if (!eps) return "";
   const multi = eps.some(e => e[0] !== eps[0][0]);
   let s = "", season;
-  for (const [se, n, t, b] of eps) {
+  for (const [se, n, t, b, still] of eps) {   // still: art/ep/<slug>-<season>x<episode>.webp exists
     if (multi && se !== season) { season = se; s += `<li class="ep-s">Season ${se}</li>`; }
-    s += `<li><span class="ep-n">${n}</span><div><b>${esc(t)}</b>${b ? `<p>${esc(b)}</p>` : ""}</div></li>`;
+    const pic = still ? `<img src="art/ep/${id}-${se}x${n}.webp" alt="" width="192" height="108" loading="lazy" decoding="async">` : "";
+    s += `<li><span class="ep-n">${n}</span><span class="ep-st" aria-hidden="true">${pic}</span><div><b>${esc(t)}</b>${b ? `<p>${esc(b)}</p>` : ""}</div></li>`;
   }
   return `<details class="${cls}"><summary>Episodes <span>${eps.length}</span></summary><ol>${s}</ol></details>`;
 }
-// re-renders (marking watched, sync) replace the markup; keep the episode list open if it was
+// key-art banner shared by the details card and the TVA case file; data lives in episodes.js (ART).
+// Each banner exists at 960 and 480 wide; the browser picks the smaller one wherever it is enough.
+const ART_SIZES = {"dt-art":"(max-width:980px) calc(100vw - 46px), 40vw", "pp-photo":"(max-width:820px) calc(100vw - 40px), 32vw"};
+let artKeep = null;   // the banner <img> being carried across a same-title redraw (see keepOpen)
+const artImg = (id, cls) => !(typeof ART !== "undefined" && ART.has(id)) ? ""
+  : artKeep ? `<div class="${cls}" data-art-slot></div>`
+  : `<div class="${cls}"><img data-art src="art/${id}.webp" srcset="art/${id}-480.webp 480w, art/${id}.webp 960w" sizes="${ART_SIZES[cls]}" alt="" width="960" height="540" decoding="async"></div>`;
+// Re-renders (marking watched, sync, typing a query) replace the markup. For the same title, keep the episode
+// list open and move the already-decoded banner image into the new markup (artImg leaves an empty slot, so no
+// second image is built or fetched); "fresh" marks a newly opened title, the only time the banner animates.
 const keepOpen = (box, id, sel, render) => {
-  const open = box.dataset.id === id && box.querySelector(sel)?.open;
-  render(); box.dataset.id = id;
+  const same = box.dataset.id === id, open = same && box.querySelector(sel)?.open;
+  artKeep = same && box.querySelector("img[data-art]") || null;
+  try { render(); } finally {
+    if (artKeep) box.querySelector("[data-art-slot]")?.append(artKeep);
+    artKeep = null;
+  }
+  box.dataset.id = id;
+  box.classList.toggle("fresh", !same);
   if (open) box.querySelector(sel).open = true;
 };
 
 function renderDetail() {
   const box = $("#detail"), u = uni(S.sel), all = entries(u), e = detailId && all.find(x => x.id === detailId);
-  if (!e) { box.innerHTML = ""; return; }
+  if (!e) { box.innerHTML = ""; delete box.dataset.id; return; }
   const pos = [...all].sort((a, b) => a.ord - b.ord).indexOf(e) + 1, seen = S.watched[e.id], soon = e.rel && e.rel > TODAY;
   const also = unis().filter(x => x.id !== u.id && entries(x).some(y => y.id === e.id));
   const ni = u.id === "616" ? NARRATIVE.items.findIndex(([t]) => t[0] !== "@" && slug(t) === e.id) : -1, nn = ni >= 0 ? NARRATIVE.items[ni] : null;
   keepOpen(box, e.id, ".dt-eps", () => box.innerHTML = `<div class="detail k-${e.k}${seen ? " seen" : ""}">
+    ${artImg(e.id, "dt-art")}
     <div class="dt-top"><span class="kd"></span>${TYPE[e.k] || "Title"} · ${esc(u.name)}<button type="button" class="dt-x" data-act="close-detail" aria-label="Close details">×</button></div>
     <h3>${esc(e.t)}</h3>
     ${typeof SYN !== "undefined" && SYN[e.id] ? `<p class="dt-syn">${esc(SYN[e.id])}</p>` : ""}
@@ -881,23 +925,24 @@ $("#tree").addEventListener("keydown", e => {
   else if (g) { e.preventDefault(); select(g.dataset.u); }
 });
 $("#back").addEventListener("click", exitBranch);
+// the tooltip follows the pointer with a transform (compositor only, no layout), and only rewrites its
+// text when it points at something new
+const showTip = (html, e) => {
+  const r = stage.getBoundingClientRect(), x = Math.min(Math.max(e.clientX - r.left, 120), r.width - 120), y = e.clientY - r.top;
+  if (tip.dataset.h !== html) { tip.innerHTML = html; tip.dataset.h = html; }
+  tip.style.transform = `translate(${x}px,${y}px) translate(-50%,calc(-100% - 16px))`;
+  tip.hidden = false;
+};
 $("#tree").addEventListener("pointermove", e => {
   const nd = e.target.closest(".node");
   if (nd && e.pointerType !== "touch") {
-    const en = entries(uni(S.sel)).find(x => x.id === nd.dataset.id), r = stage.getBoundingClientRect();
-    tip.innerHTML = `<b>${esc(en.t)}</b><span>${TYPE[en.k] || "Title"} · set ${esc(en.y)}${S.watched[en.id] ? " · watched" : ""}</span>`;
-    tip.style.left = Math.min(Math.max(e.clientX - r.left, 120), r.width - 120) + "px";
-    tip.style.top = e.clientY - r.top + "px";
-    tip.hidden = false;
-    return;
+    const en = entries(uni(S.sel)).find(x => x.id === nd.dataset.id);
+    return showTip(`<b>${esc(en.t)}</b><span>${TYPE[en.k] || "Title"} · set ${esc(en.y)}${S.watched[en.id] ? " · watched" : ""}</span>`, e);
   }
   const g = e.target.closest(".leaf");
   if (!g || e.pointerType === "touch") { tip.hidden = true; return; }
-  const u = uni(g.dataset.u), [n, w] = stats(u), r = stage.getBoundingClientRect();
-  tip.innerHTML = `<b>${esc(u.name)}</b><span>${esc(u.des)} · ${n} title${n === 1 ? "" : "s"} · ${w} watched</span>`;
-  tip.style.left = Math.min(Math.max(e.clientX - r.left, 120), r.width - 120) + "px";
-  tip.style.top = e.clientY - r.top + "px";
-  tip.hidden = false;
+  const u = uni(g.dataset.u), [n, w] = stats(u);
+  showTip(`<b>${esc(u.name)}</b><span>${esc(u.des)} · ${n} title${n === 1 ? "" : "s"} · ${w} watched</span>`, e);
 });
 $("#tree").addEventListener("pointerleave", () => tip.hidden = true);
 $("#uSel").addEventListener("change", e => select(e.target.value));
