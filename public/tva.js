@@ -61,7 +61,7 @@ function build() {
     <div class="t-agent" id="tAgent"></div>
     <button type="button" class="s-exit" data-tact="exit">Exit TVA View</button>
   </header>
-  <div class="s-cmd" role="toolbar" aria-label="Terminal controls">
+  <div class="s-cmd" role="region" aria-label="Terminal controls">
     <div class="tp-modes" id="tModes" role="group" aria-label="Order"><span>Order&gt;</span>${MODES.map(([m, l]) => `<button type="button" data-tmode="${m}">${l}</button>`).join("")}</div>
     <label class="s-q"><span>Query&gt;</span><input id="tQuery" type="search" placeholder="title_" autocomplete="off" aria-label="Search titles"></label>
     <label class="s-chk"><input type="checkbox" id="tHide"> Hide processed</label>
@@ -296,7 +296,7 @@ function power(v) {
   btn.setAttribute("aria-pressed", on);
   if (on) {
     const had = !!detailId;   // a title was open in the classic view: phones land on its case file
-    entered = detailId;
+    entered = detailId; query = "";   // the search box is rebuilt empty, so the filter starts empty too
     build(); lastCase = null; render(true); revealCase(); root.querySelector(".scr").classList.add("crt-on");
     if (phone() && had) setPane("case");
   } else {
@@ -350,8 +350,9 @@ root.addEventListener("input", e => {
 root.addEventListener("change", e => { if (e.target.id === "tHide") { S.hideSeen = e.target.checked; renderPanel(); } });
 document.addEventListener("keydown", e => {
   if (!on || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
-  if (e.key === "j" || e.key === "ArrowDown") { e.preventDefault(); step(1); }
-  else if (e.key === "k" || e.key === "ArrowUp") { e.preventDefault(); step(-1); }
+  const arrows = !!e.target.closest?.("#tLedger");   // arrows step only in the ledger, so they still scroll everywhere else
+  if (e.key === "j" || (arrows && e.key === "ArrowDown")) { e.preventDefault(); step(1); }
+  else if (e.key === "k" || (arrows && e.key === "ArrowUp")) { e.preventDefault(); step(-1); }
 });
 
 

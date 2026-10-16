@@ -14,9 +14,10 @@ universe). It writes public/upcoming.js (title, kind, universe, release date, TM
 public/art/. The site adds these at the end of their universe as estimated placements; once a title is placed
 by hand in app.js it drops out on the next run. Titles found once are kept after release (tools/upcoming.json),
 so nothing vanishes the day it comes out. The TMDB key comes from TMDB_TOKEN or ~/.tmdb_token, never the repo."""
-import datetime, io, json, os, re, shutil, subprocess, time, urllib.parse, urllib.request
+import datetime, io, json, os, re, shutil, subprocess, sys, time, urllib.parse, urllib.request
 from PIL import Image
 
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # titles in any script print on any console
 HERE = os.path.dirname(os.path.abspath(__file__))
 PUB = os.path.join(HERE, "..", "public")
 TOK = os.environ.get("TMDB_TOKEN") or open(os.path.expanduser("~/.tmdb_token")).read().strip()
@@ -38,6 +39,13 @@ def api(path, **q):
     raise err
 
 slug = lambda t: re.sub(r"[^a-z0-9]+", "", t.lower())
+def write(path, text):
+    """Write a file whole or not at all: an interrupted run never leaves half a file for the site to load."""
+    text = text.replace("</", r"<\/")   # a value can never close a <script> (same string in JS)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f: f.write(text)
+    os.replace(tmp, path)
+
 norm = lambda t: re.sub(r"[^a-z0-9]", "", t.lower().replace("marvel's", ""))
 
 # every title the site lists by hand, with its kind and universe.
@@ -53,16 +61,30 @@ hand = json.load(open(os.path.join(HERE, "tmdb_ids.json")))
 hand_ids = {(v[0], v[1]) for v in hand.values()}
 hand_slug = {}
 for s_, v in hand.items(): hand_slug.setdefault((v[0], v[1]), s_)
-aliases = json.load(open(ALIASES, encoding="utf-8")) if os.path.exists(ALIASES) else {}
+def load(path, default, ok):
+    """Last run's file, or stop with a clear message if it is damaged: carrying on would lose the permanent ids."""
+    if not os.path.exists(path): return default
+    try: v = json.load(open(path, encoding="utf-8"))
+    except ValueError as e: sys.exit(f"{os.path.basename(path)} is damaged ({e}). Restore it from a backup, then run again.")
+    if not ok(v): sys.exit(f"{os.path.basename(path)} has the wrong shape. Restore it from a backup, then run again.")
+    return v
+aliases = load(ALIASES, {}, lambda v: isinstance(v, dict) and all(isinstance(k, str) and isinstance(x, str) for k, x in v.items()))
 
 today = datetime.date.today().isoformat()
-state = {(f.get("kind", "movie"), f["tmdb"], f.get("season")): f for f in (json.load(open(STATE, encoding="utf-8")) if os.path.exists(STATE) else [])}
+state = {(f.get("kind", "movie"), f["tmdb"], f.get("season")): f for f in load(STATE, [], lambda v: isinstance(v, list) and all(
+    isinstance(f, dict) and isinstance(f.get("tmdb"), int) and isinstance(f.get("slug"), str) and re.fullmatch(r"[a-z0-9]+", f["slug"])
+    and isinstance(f.get("t"), str) for f in v))}   # an id is letters and digits only: it names art files
 
 def art_from_tmdb(kind, i, s):
-    ims = api(f"/{kind}/{i}/images", include_image_language="null,en")["backdrops"]
-    ims.sort(key=lambda b: (b["iso_639_1"] is not None, -b["vote_average"], -b["vote_count"]))
-    if not ims: return False
-    im = Image.open(io.BytesIO(urllib.request.urlopen("https://image.tmdb.org/t/p/w1280" + ims[0]["file_path"], timeout=60).read())).convert("RGB")
+    try:
+        ims = [b for b in api(f"/{kind}/{i}/images", include_image_language="null,en").get("backdrops") or [] if isinstance(b.get("file_path"), str)]
+        ims.sort(key=lambda b: (b.get("iso_639_1") is not None, -(b.get("vote_average") or 0), -(b.get("vote_count") or 0)))
+        return bool(ims) and save_art(ims[0]["file_path"], s)
+    except Exception as e:   # no picture this time: the title still goes on the site, and gets art on a later run
+        print(f"  warning: art for {kind} {i} failed: {e}"); return False
+
+def save_art(path, s):
+    im = Image.open(io.BytesIO(urllib.request.urlopen("https://image.tmdb.org/t/p/w1280" + path, timeout=60).read())).convert("RGB")
     for W in (960, 480, 160):
         H = W * 9 // 16; k = max(W / im.width, H / im.height)
         r = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
@@ -77,24 +99,27 @@ def copy_art(src, dst):
         if os.path.exists(a): shutil.copyfile(a, os.path.join(PUB, "art", dst + suf + ".webp")); ok = True
     return ok
 
-out = []
+out, used = [], set()
 def add(entry):
-    out.append(entry)
+    out.append(entry); used.add(entry["slug"])
     print(f"  {entry['rel'] or 'undated   '}  {entry['t']}  -> {entry['u']}  ({entry['kind']} {entry['tmdb']}){'' if entry['art'] else '  (no art yet)'}")
 
 # 1. new films and series
 cands = {}
 for c in MARVEL:
     for kind, f in (("movie", "primary_release_date.gte"), ("tv", "first_air_date.gte")):
-        for page in range(1, 6):
-            r = api(f"/discover/{kind}", with_companies=c, page=page, **{f: today})
-            for x in r["results"]: cands[(kind, x["id"])] = 1
-            if page >= r.get("total_pages", 1): break
-        # announced but undated (planned / in production): the most popular titles without a date
-        for page in range(1, 3):
-            r = api(f"/discover/{kind}", with_companies=c, page=page, sort_by="popularity.desc")
-            for x in r["results"]:
-                if not (x.get("release_date") or x.get("first_air_date")): cands[(kind, x["id"])] = 1
+        try:
+            for page in range(1, 6):
+                r = api(f"/discover/{kind}", with_companies=c, page=page, **{f: today})
+                for x in r.get("results", []): cands[(kind, x["id"])] = 1
+                if page >= r.get("total_pages", 1): break
+            # announced but undated (planned / in production): the most popular titles without a date
+            for page in range(1, 3):
+                r = api(f"/discover/{kind}", with_companies=c, page=page, sort_by="popularity.desc")
+                for x in r.get("results", []):
+                    if not (x.get("release_date") or x.get("first_air_date")): cands[(kind, x["id"])] = 1
+        except Exception as e:
+            print(f"  warning: TMDB search for company {c} ({kind}) failed, continuing: {e}")
 cands.update({(k, i): 1 for (k, i, s) in state if s is None})
 print("Films and series:")
 for kind, i in sorted(cands):
@@ -102,13 +127,22 @@ for kind, i in sorted(cands):
     if (kind, i) in hand_ids:                                                   # placed by hand: the hand entry wins
         if prev and prev["slug"] != hand_slug[(kind, i)]: aliases[prev["slug"]] = hand_slug[(kind, i)]
         continue
-    d = api(f"/{kind}/{i}"); time.sleep(.08)
-    comps = {c["id"] for c in d.get("production_companies", [])}
-    nets = {n["name"] for n in d.get("networks", [])}
-    genres = {g["name"] for g in d.get("genres", [])}
+    try: d = api(f"/{kind}/{i}"); time.sleep(.08)
+    except Exception as e:
+        # TMDB failed for this title: keep last run's entry, so it doesn't vanish from the site
+        print(f"  warning: TMDB lookup failed for {kind} {i}, {'kept as last run' if prev else 'skipped'}: {e}")
+        if prev: add(prev)
+        continue
+    comps = {c.get("id") for c in d.get("production_companies") or []}
+    nets = {n.get("name") for n in d.get("networks") or []}
+    genres = {g.get("name") for g in d.get("genres") or []}
     if not comps & set(MARVEL) or nets & KIDS_NETWORKS or "Kids" in genres: continue
-    if d.get("status") in ("Canceled",): continue
-    title, rel = d.get("title") or d.get("name"), d.get("release_date") or d.get("first_air_date") or ""
+    if d.get("status") == "Canceled":
+        if prev:
+            print(f"  kept (canceled on TMDB, but listed before): {prev['t']}"); add(prev)
+        continue
+    title, rel = d.get("title") or d.get("name") or "", d.get("release_date") or d.get("first_air_date") or ""
+    if not title: continue
     if "spider-verse" in title.lower(): u = "verse"
     elif 420 in comps: u = "616"
     elif comps & {COLUMBIA, SONY} and "spider" in title.lower(): u = "ssu"
@@ -116,7 +150,9 @@ for kind, i in sorted(cands):
         print(f"  skipped (no universe for it): {title}"); continue
     if norm(title) in site_norms: title = f"{title} ({rel[:4] or 'TBA'})"     # same name as a listed title
     s = prev["slug"] if prev else slug(title)                                    # first id is kept for good
-    if not prev and s in aliases: s += rel[:4] or "tba"                          # never reuse a retired id
+    if not prev and (not s or s in aliases or s in used):                      # no usable letters, or a retired / taken id
+        s = f"tmdb{kind[0]}{i}"
+        while s in by_slug or s in aliases or s in used: s += "x"               # even that is taken (a title named "tmdbm200")
     if s in by_slug: continue
     k = ("A" if "Animation" in genres else "F") if kind == "movie" else ("A" if "Animation" in genres else "S")
     add({"kind": kind, "tmdb": i, "season": None, "t": title, "slug": s, "k": k, "u": u, "rel": rel,
@@ -125,14 +161,20 @@ for kind, i in sorted(cands):
 # 2. new seasons of shows already listed
 print("New seasons:")
 for i in sorted({v[1] for v in hand.values() if v[0] == "tv"}):
-    d = api(f"/tv/{i}"); time.sleep(.08)
+    try: d = api(f"/tv/{i}"); time.sleep(.08)
+    except Exception as e:
+        print(f"  warning: TMDB lookup failed for tv {i}, keeping its seasons from last run: {e}")
+        for (k_, i_, n_), f_ in state.items():
+            if k_ == "tv" and i_ == i and n_ is not None: add(f_)
+        continue
     listed = [s for s, v in hand.items() if v == ["tv", i] and s in by_slug]
     seasons = [(int(m.group(2)), by_slug[s]) for s in listed if (m := re.match(r"(.*) \(Season (\d+)\)$", by_slug[s][0]))]
     if not seasons: continue                                                    # single-entry show (whole run in one title)
     top, (top_title, k, u) = max(seasons)
     base = re.sub(r" \(Season \d+\)$", "", top_title)
-    for sn in d.get("seasons", []):
-        n = sn["season_number"]
+    for sn in d.get("seasons") or []:
+        n = sn.get("season_number")
+        if not isinstance(n, int): continue
         if n <= top: continue
         t = f"{base} (Season {n})"; prev = state.get(("tv", i, n))
         if slug(t) in by_slug:                                                  # placed by hand now
@@ -143,13 +185,21 @@ for i in sorted({v[1] for v in hand.values() if v[0] == "tv"}):
              "syn": (sn.get("overview") or d.get("overview") or "").strip(), "art": copy_art(slug(top_title), s)})
 
 out.sort(key=lambda f: (f["rel"] or "9999", f["t"]))
-json.dump(out, open(STATE, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-json.dump(aliases, open(ALIASES, "w", encoding="utf-8"), ensure_ascii=False, indent=1, sort_keys=True)
-if aliases: print("id moves:", aliases)
-open(os.path.join(PUB, "upcoming.js"), "w", encoding="utf-8", newline="\n").write(
+def loops(a):   # an id move must never point back to itself, directly or through others
+    seen, n = {a}, aliases.get(a)
+    while n is not None:
+        if n in seen: return True
+        seen.add(n); n = aliases.get(n)
+    return False
+for a in [a for a in aliases if loops(a)]: print("  dropped looping id move:", a, "->", aliases.pop(a))
+# upcoming.js first: if it can't be written, the state files stay as they were and the next run redoes it
+write(os.path.join(PUB, "upcoming.js"),
     "// Announced Marvel films, series and seasons from TMDB not yet placed by hand. Built by tools/build_upcoming.py; do not edit.\n"
     "// Each: {t: title, slug, k: kind, u: universe id, tv: a series or season, rel: release date, syn: TMDB overview, art: banner in art/}\n"
     "const UPCOMING = " + json.dumps([{**{x: f[x] for x in ("t", "slug", "k", "u", "rel", "syn", "art")}, "tv": f["kind"] == "tv"} for f in out], ensure_ascii=False) + ";\n"
     "// old id -> new id for titles that were auto-added and later placed by hand (marks move across on load)\n"
     "const UP_ALIASES = " + json.dumps(aliases, ensure_ascii=False, sort_keys=True) + ";\n")
+write(ALIASES, json.dumps(aliases, ensure_ascii=False, indent=1, sort_keys=True))
+write(STATE, json.dumps(out, ensure_ascii=False, indent=1))
+if aliases: print("id moves:", aliases)
 print(len(out), "auto-added titles")

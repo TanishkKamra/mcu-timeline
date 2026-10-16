@@ -234,39 +234,32 @@ const NARRATIVE = {
     ["Thunderbolts*"], ["@828 The Fantastic Four: First Steps"], ["The Punisher: One Last Kill"], ["Spider-Man: Brand New Day"],
   ],
 };
-const TODAY = new Date().toISOString().slice(0, 10);
+const localDay = () => new Date().toLocaleDateString("en-CA");   // YYYY-MM-DD in the visitor's time zone
+let TODAY = localDay();
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 document.querySelectorAll(".kk").forEach(k => k.textContent = MAC ? "⌘K" : "Ctrl K");
 
 const KEY = "mcu-yggdrasil-v2";
-const DEF = () => ({sel:"616", mode:"story", kind:"all", hideSeen:false, watched:{}, edits:{}, removed:[], order:{}, cItems:{}, cUnis:[]});
 let S;
-try { S = {...DEF(), ...JSON.parse(localStorage.getItem(KEY) || "{}")}; } catch { S = DEF(); }
-// A title that was auto-added and later placed by hand changes id: move its watch mark, removal, edits and
-// custom order position to the new id (UP_ALIASES from upcoming.js). Runs on load and on every sync.
-function migrateIds(s) {
-  const map = typeof UP_ALIASES !== "undefined" ? UP_ALIASES : {};
-  if (!Object.keys(map).length) return s;
-  const to = id => { let n = id; for (let hop = 0; map[n] && hop < 10; hop++) n = map[n]; return n; };
-  const key = k => { const i = String(k).indexOf(":"); return i < 0 ? k : k.slice(0, i + 1) + to(k.slice(i + 1)); };
-  for (const id of Object.keys(s.watched || {})) { const n = to(id); if (n !== id) { s.watched[n] ||= s.watched[id]; delete s.watched[id]; } }
-  s.removed = [...new Set((s.removed || []).map(key))];
-  const ed = {};   // if both the old and the new id have edits, the new id's win
-  for (const [k, v] of Object.entries(s.edits || {})) { const n = key(k); if (n === k || !(n in ed)) ed[n] = v; }
-  s.edits = ed;
-  for (const u in s.order || {}) s.order[u] = [...new Set(s.order[u].map(to))];
-  return s;
-}
-migrateIds(S);
-const hash = decodeURIComponent(location.hash.slice(1));
+try { S = clean(JSON.parse(localStorage.getItem(KEY) || "{}"), 1); } catch { S = DEF(); }   // state.js: shape-checked, field by field
+const readHash = () => { try { return decodeURIComponent(location.hash.slice(1)); } catch { return ""; } };
+const hash = readHash();
 let editing = null, confirming = null;
-// what syncs to the cloud: progress and edits, not view settings
-const syncData = s => JSON.stringify([s.watched, s.edits, s.removed, s.order, s.cItems, s.cUnis]);
-let lastData = syncData(S);
+// A visitor action: stamps what fn changed (state.js) and tells sync. Returns the old values, for Undo.
+let changed = false, storeWarned = false;
+const act = fn => {
+  const old = touch(S, fn), now = textMap(S), after = {};
+  for (const k in old) after[k] = now[k];
+  if (Object.keys(old).length) changed = true;
+  return {old, after};
+};
 const save = () => {
-  const d = syncData(S);
-  if (d !== lastData) { lastData = d; S.updatedAt = Date.now(); window.mcuApp?.onSave?.(); }
-  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
+  if (changed) { changed = false; window.mcuApp?.onSave?.(); }
+  try { const r = clean(JSON.parse(localStorage.getItem(KEY) || "{}")); if (r.owner === S.owner && merge(S, r).changed) setTimeout(() => renderAll(), 0); } catch {}
+  try { localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch {
+    if (!storeWarned) { storeWarned = true; setTimeout(() => toast("This browser isn't saving your progress (its storage is full or blocked), so changes will be lost when you leave."), 0); }
+  }
 };
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -294,6 +287,7 @@ const fmtDate = d => d ? new Date(d + "T00:00").toLocaleDateString(undefined, {y
 const unis = () => UNIS.concat(S.cUnis);
 const uni = id => unis().find(u => u.id === id);
 if (uni(hash)) S.sel = hash;
+else if (!uni(S.sel)) S.sel = "616";
 
 function entries(u) {
   const base = (u.items || []).map(([t, k, rel, y, c, f, id], ord) => ({id:id || slug(t), t, k, rel, y, c, f, ord, base:true}))
@@ -379,12 +373,12 @@ const cls = ids => ids.includes(S.sel) ? "on" : S.sel === "616" ? "" : "dim";
 
 function leaf(u, x, y, label, st, gd = 1.6) {
   const [n, w] = st, r = 4 + Math.min(5, Math.sqrt(n) * 1.1), rr = r + 5, C = 2 * Math.PI * rr;
-  return `<g class="leaf${u.id === S.sel ? " on" : ""}" data-u="${esc(u.id)}" tabindex="0" role="button" style="--gd:${gd.toFixed(2)}s" aria-label="${esc(u.name)}, ${w} of ${n} watched" aria-pressed="${u.id === S.sel}">
+  return `<g class="leaf${u.id === S.sel ? " on" : ""}" data-u="${esc(u.id)}" tabindex="0" role="button" style="--gd:${gd.toFixed(2)}s" aria-label="${esc(u.label || u.name)} ${esc(u.des)}${u.label && u.label !== u.name ? ` (${esc(u.name)})` : ""}, ${w} of ${n} watched" aria-pressed="${u.id === S.sel}">
     <circle class="hit" cx="${x}" cy="${y}" r="22"/>
     ${w ? `<circle class="ring-bg" cx="${x}" cy="${y}" r="${rr}"/><circle class="ring" cx="${x}" cy="${y}" r="${rr}" stroke-dasharray="${(w / n * C).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 ${x} ${y})"/>` : ""}
     <circle class="dot" cx="${x}" cy="${y}" r="${r.toFixed(1)}"/>${label}</g>`;
 }
-const flatLabel = (u, x, y, anchor) => `<text x="${x}" y="${y}" text-anchor="${anchor}"><tspan class="lbl">${esc(u.label || u.name)}</tspan><tspan class="des" x="${x}" dy="17">${esc(u.des)}</tspan></text>`;
+const flatLabel = (u, x, y, anchor) => `<text aria-hidden="true" x="${x}" y="${y}" text-anchor="${anchor}"><tspan class="lbl">${esc(u.label || u.name)}</tspan><tspan font-size="0"> </tspan><tspan class="des" x="${x}" dy="17">${esc(u.des)}</tspan></text>`;
 
 const GEOM = {};
 function renderTree() {
@@ -417,7 +411,7 @@ function renderTree() {
       GEOM[u.id] = [limbSeg, [hub, polar(HUB + 70, ha), polar(R - 90, a), p]];
       limb += `<g class="${cls([u.id])}" style="--gd:${(1.15 + slot * .018).toFixed(2)}s">${curve(hub, polar(HUB + 70, ha), polar(R - 90, a), p, false)}</g>`;
       const lp = polar(R + 18, a), left = a < -90, rot = (left ? a + 180 : a).toFixed(1);
-      nodes += leaf(u, p.x, p.y, `<text transform="translate(${lp.x} ${lp.y}) rotate(${rot})" text-anchor="${left ? "end" : "start"}"><tspan class="lbl" y="-2">${esc(u.label || u.name)}</tspan><tspan class="des" x="0" dy="15">${esc(u.des)}</tspan></text>`, ST[u.id], 1.6 + slot * .03);
+      nodes += leaf(u, p.x, p.y, `<text aria-hidden="true" transform="translate(${lp.x} ${lp.y}) rotate(${rot})" text-anchor="${left ? "end" : "start"}"><tspan class="lbl" y="-2">${esc(u.label || u.name)}</tspan><tspan font-size="0"> </tspan><tspan class="des" x="0" dy="15">${esc(u.des)}</tspan></text>`, ST[u.id], 1.6 + slot * .03);
     });
     br += `<g class="${cls(g.us.map(u => u.id))}">${limb}</g>`;
     const lp = polar(HUB - 34, ha);
@@ -472,11 +466,15 @@ const unhide = e => { let hit = false; if (S.hideSeen && S.watched[e.id]) { S.hi
 
 // the title to watch next: first unwatched, released one in story order (or the fan Narrative order).
 // The classic "Up next" card and the TVA terminal's default case both use it, so they never disagree.
+// out yet: released on or before today. A listed title with no date is still to come; titles the visitor added count as out.
+const isOut = e => e.rel ? e.rel <= TODAY : !e.base;
 function upNext(u, all = entries(u)) {
-  const seq = S.mode === "narrative" && u.id === "616"
-    ? NARRATIVE.items.filter(([r]) => r[0] !== "@").map(([t]) => all.find(e => e.id === slug(t))).filter(Boolean)
-    : [...all].sort((a, b) => a.ord - b.ord);
-  return seq.find(e => !S.watched[e.id] && !(e.rel && e.rel > TODAY));
+  let seq = [...all].sort((a, b) => a.ord - b.ord);
+  if (S.mode === "narrative" && u.id === "616") {   // the fan order first, then anything it leaves out, in story order
+    const narr = NARRATIVE.items.filter(([r]) => r[0] !== "@").map(([t]) => all.find(e => e.id === slug(t))).filter(Boolean), inN = new Set(narr);
+    seq = narr.concat(seq.filter(e => !inN.has(e)));
+  }
+  return seq.find(e => !S.watched[e.id] && isOut(e));
 }
 
 function card(e, i, n, my) {
@@ -485,7 +483,7 @@ function card(e, i, n, my) {
     <div class="row">
       <button type="button" class="eye" data-act="watch" aria-pressed="${!!seen}" aria-label="${seen ? "Watched" : "Mark watched"}: ${esc(e.t)}">${CHECK}</button>
       <span class="th" aria-hidden="true">${typeof ART !== "undefined" && ART.has(e.id) ? `<img src="art/${e.id}-160.webp" alt="" width="160" height="90" loading="lazy" decoding="async">` : ""}</span>
-      <div><div class="t">${e.num ? `<span class="yv">${e.num}.</span> ` : my ? `<span class="yv">${i + 1}.</span> ` : ""}${esc(e.t)}</div>
+      <div><div class="t" tabindex="0" role="button" aria-label="Details: ${esc(e.t)}">${e.num ? `<span class="yv">${e.num}.</span> ` : my ? `<span class="yv">${i + 1}.</span> ` : ""}${esc(e.t)}</div>
         <div class="sub"><span class="kd"></span>${TYPE[e.k] || "Title"} · ${soon ? "Out " : ""}${fmtDate(e.rel)}${soon ? ` <span class="soon">Upcoming</span>` : ""}${e.opt ? ` <span class="soon opt">Optional</span>` : ""}</div>${e.note ? `<div class="sub vnote">${esc(e.note)}</div>` : ""}</div>
       <div class="right">
         <div class="acts">
@@ -537,6 +535,7 @@ function renderPanel(focusSel) {
     ? `<div class="next k-${nx.k}">${artImg(nx.id, "dt-art")}${ring(p, Math.round(p * 100) + "%")}<div><small>${seen ? "Up next" : "Start here"} · ${seen} of ${pool.length}${what} watched</small><strong>${esc(nx.t)}</strong>
         <div class="sub"><span class="kd"></span>${TYPE[nx.k]} · set ${esc(nx.y)}</div></div>
         <button class="btn primary" type="button" data-act="watch" data-id="${esc(nx.id)}">Mark watched</button></div>`
+    : seen < pool.length ? `<div class="next">${ring(p, Math.round(p * 100) + "%")}<div><small>All caught up · ${seen} of ${pool.length}${what} watched</small><strong>You've seen everything that's out.</strong><div class="sub">${pool.length - seen} still to come. Pick another branch on the tree meanwhile.</div></div></div>`
     : pool.length ? `<div class="next">${ring(1, "100%")}<div><small>${what ? `All${what} watched` : "Universe complete"}</small><strong>You've seen everything here.</strong><div class="sub">Pick another branch on the tree.</div></div></div>` : "");
 
   document.querySelectorAll("#mode button").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === S.mode));
@@ -607,10 +606,16 @@ function renderPanel(focusSel) {
 const renderAll = f => { view === "branch" ? renderFocus(S.sel) : renderTree(); renderPanel(f); };
 function select(id) {
   S.sel = id; editing = null; confirming = null; detailId = null;
-  try { history.replaceState(null, "", "#" + id); } catch {}
+  // each universe gets a history entry, so Back returns to the one before
+  try { if (readHash() !== id) history.pushState(null, "", "#" + id); } catch {}
   renderPanel();
-  view === "branch" ? renderFocus(id, true) : enterBranch(id);
+  if (animating) wantBranch = id;   // shown as soon as the zoom in or out ends
+  else view === "branch" ? renderFocus(id, true) : enterBranch(id);
 }
+// the address changed by hand, or Back / Forward: follow it
+const followHash = () => { const h = readHash(); if (h && h !== S.sel && uni(h)) select(h); };
+addEventListener("hashchange", followHash);
+addEventListener("popstate", followHash);
 
 /* ---------- toast with undo ---------- */
 let toastTimer, undoSnap = null;
@@ -622,8 +627,12 @@ function toast(msg, snap) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => $("#toast").hidden = true, 4500);
 }
-$("#undo").addEventListener("click", () => { if (undoSnap) { S = JSON.parse(undoSnap); renderAll(); } $("#toast").hidden = true; });
-const withUndo = (msg, fn, focusSel) => { const snap = JSON.stringify(S); fn(); renderAll(focusSel); toast(msg, snap); };
+$("#undo").addEventListener("click", () => {
+  const u = undoSnap;
+  if (u) { if (Object.keys(revert(S, u.old, u.after)).length) changed = true; if (!uni(S.sel)) S.sel = "616"; renderAll(); }
+  undoSnap = null; $("#toast").hidden = true;
+});
+const withUndo = (msg, fn, focusSel) => { const old = act(fn); renderAll(focusSel); toast(msg, old); };
 
 /* ---------- command palette ---------- */
 const pal = $("#pal"), pq = $("#pq"), pres = $("#pres");
@@ -780,6 +789,8 @@ const inZoom = (bb, pts) => {
   const s = VB0[2] / bb[2], c0x = VB0[0] + VB0[2] / 2, c0y = VB0[1] + VB0[3] / 2, bx = bb[0] + bb[2] / 2, by = bb[1] + bb[3] / 2;
   return pts.map(q => ({x:bx + (q.x - c0x) / s, y:by + (q.y - c0y) / s}));
 };
+let wantBranch = null;
+const settle = () => { const w = wantBranch; wantBranch = null; if (w) view === "branch" ? renderFocus(w, true) : enterBranch(w); };
 const mix = (a, b, k) => a.map((q, i) => ({x:lerp(q.x, b[i].x, k), y:lerp(q.y, b[i].y, k)}));
 
 async function enterBranch(id) {
@@ -804,6 +815,8 @@ async function enterBranch(id) {
   // hand-off: the moving line already sits exactly on the new ground line and dissolves into it, no hard cut
   await timeline(420, p => { m.style.opacity = 1 - quintOut(p); });
   m.remove(); camEnd(true); animating = false;
+  if (wantBranch === id) wantBranch = null;
+  settle();
 }
 
 async function exitBranch() {
@@ -826,6 +839,7 @@ async function exitBranch() {
     m.style.opacity = 1 - seg(p, .8, 1);
   });
   m.remove(); camEnd(); animating = false;
+  settle();
 }
 
 function renderFocus(id, intro) {
@@ -870,7 +884,7 @@ function epList(id, cls) {
     const pic = still ? `<img src="art/ep/${id}-${se}x${n}.webp" alt="" width="192" height="108" loading="lazy" decoding="async">` : "";
     s += `<li><span class="ep-n">${n}</span><span class="ep-st" aria-hidden="true">${pic}</span><div><b>${esc(t)}</b>${b ? `<p>${esc(b)}</p>` : ""}</div></li>`;
   }
-  return `<details class="${cls}"><summary>Episodes <span>${eps.length}</span></summary><ol>${s}</ol></details>`;
+  return `<details class="${cls}"><summary>Episodes <span>${eps.length}</span></summary><ol tabindex="0" aria-label="Episodes">${s}</ol></details>`;
 }
 // key-art banner shared by the details card and the TVA case file; data lives in episodes.js (ART).
 // Each banner exists at 960 and 480 wide; the browser picks the smaller one wherever it is enough.
@@ -947,7 +961,12 @@ function paintWatch(id) {
   if (focused) slot.querySelector("[data-watch-cc]")?.focus();
 }
 async function fillWatch(id) {
-  try { await loadJs("watch/index.js"); } catch { return; }   // offline or blocked: the card keeps its placeholder line
+  try { await loadJs("watch/index.js"); }
+  catch {   // offline or blocked: say so instead of "Finding…" forever; opening the card again retries
+    const slot = document.querySelector(`#detail .dt-watch[data-id="${CSS.escape(id)}"]`);
+    if (slot) slot.innerHTML = `<p class="w-none">Couldn't load streaming options. Check your connection, then open this title again.</p>`;
+    return;
+  }
   watchCC ||= guessCC();
   const cc = watchCC;
   paintWatch(id);                                              // picker + "Finding…" while the country file loads
@@ -988,8 +1007,9 @@ function showInList(id) {
   if (li) { li.scrollIntoView({behavior:"smooth", block:"center"}); li.classList.remove("flash"); void li.offsetWidth; li.classList.add("flash"); li.querySelector(".eye").focus({preventScroll:true}); }
 }
 
+let beamN = 0;
 function beam(fromEl, toEl) {
-  const a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect(), svg = $("#beam");
+  const k = ++beamN, a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect(), svg = $("#beam");
   const p0 = {x:a.left + a.width / 2, y:a.top + a.height / 2}, right = b.left > p0.x + 40;
   const p3 = right ? {x:b.left + 2, y:b.top + Math.min(44, b.height / 2)} : {x:b.left + b.width / 2, y:b.top + 2};
   const c1 = right ? {x:p0.x + (p3.x - p0.x) * .35, y:p0.y - 140} : {x:p0.x, y:p0.y + 140};
@@ -1004,13 +1024,12 @@ function beam(fromEl, toEl) {
     core.style.strokeDashoffset = glow.style.strokeDashoffset = L * (1 - t);
     const pt = core.getPointAtLength(L * t);
     spark.setAttribute("cx", pt.x); spark.setAttribute("cy", pt.y);
-  }).then(() => { tween(380, t => svg.style.opacity = 1 - t).then(() => { svg.hidden = true; }); });
+  }).then(() => { tween(380, t => { if (k === beamN) svg.style.opacity = 1 - t; }).then(() => { if (k === beamN) svg.hidden = true; }); });
 }
 
-let plugging = false;
+let plugGen = 0;
 async function plugIn(id) {
-  if (plugging) return;
-  plugging = true;
+  const g = ++plugGen;   // a newer click takes over; an older animation just stops
   detailId = id;
   document.querySelectorAll("#tree .node.sel").forEach(n => n.classList.remove("sel"));
   const node = view === "branch" ? document.querySelector(`#tree .node[data-id="${CSS.escape(id)}"]`) : null;
@@ -1020,11 +1039,10 @@ async function plugIn(id) {
   if (card) {
     const r = card.getBoundingClientRect();
     if (r.top < 70 || r.bottom > innerHeight - 10) { card.scrollIntoView({behavior:REDUCED ? "auto" : "smooth", block:"center"}); await sleep(REDUCED ? 0 : 450); }
-    if (node && !REDUCED) { await sleep(180); await beam(node.querySelector(".core"), card); }
-    card.classList.remove("charged"); void card.offsetWidth; card.classList.add("charged");
+    if (node && !REDUCED && g === plugGen) { await sleep(180); if (g === plugGen) await beam(node.querySelector(".core"), card); }
+    if (g === plugGen) { card.classList.remove("charged"); void card.offsetWidth; card.classList.add("charged"); }
   }
   setTimeout(() => node?.classList.remove("fire"), 700);
-  plugging = false;
 }
 
 $("#tree").addEventListener("click", e => {
@@ -1039,6 +1057,9 @@ $("#tree").addEventListener("keydown", e => {
   const n = e.target.closest(".node"), g = e.target.closest("[data-u]");
   if (n) { e.preventDefault(); plugIn(n.dataset.id); }
   else if (g) { e.preventDefault(); select(g.dataset.u); }
+});
+$("#tl").addEventListener("keydown", e => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches("li.e .t")) { e.preventDefault(); plugIn(e.target.closest("li.e").dataset.id); }
 });
 $("#back").addEventListener("click", exitBranch);
 // the tooltip follows the pointer with a transform (compositor only, no layout), and only rewrites its
@@ -1093,7 +1114,7 @@ $("#addU").addEventListener("submit", e => {
   const name = $("#u-n").value.trim();
   if (!name) return;
   const f = $("#u-f").value.trim(), id = "u" + Date.now();
-  S.cUnis.push({id, limb:"Your universes", name, label:name.slice(0, 18), des:$("#u-d").value.trim() || "Unnumbered", fork:f ? +f : null, note:$("#u-note").value.trim(), items:[]});
+  act(() => S.cUnis.push({id, limb:"Your universes", name, label:name.slice(0, 18), des:$("#u-d").value.trim() || "Unnumbered", fork:f ? +f : null, note:$("#u-note").value.trim(), items:[]}));
   e.target.reset();
   select(id);
   toast(`“${name}” is growing on the tree`);
@@ -1108,21 +1129,21 @@ document.addEventListener("click", e => {
   if (tt && !e.target.closest("form")) { plugIn(tt.closest("li.e").dataset.id); return; }
   const b = e.target.closest("[data-act]");
   if (!b || b.tagName === "FORM") return;
-  const act = b.dataset.act, id = b.dataset.id || b.closest("li.e")?.dataset.id, key = S.sel + ":" + id;
+  const a = b.dataset.act, id = b.dataset.id || b.closest("li.e")?.dataset.id, key = S.sel + ":" + id;
   const title = () => entries(uni(S.sel)).find(x => x.id === id)?.t || "Title";
-  if (act === "watch") {
+  if (a === "watch") {
     const on = !S.watched[id], fromNext = !!b.dataset.id;
     withUndo(on ? `Marked “${title()}” watched` : `Unmarked “${title()}”`, () => { on ? S.watched[id] = true : delete S.watched[id]; },
       fromNext ? (b.closest("#detail") ? "#detail [data-act=watch]" : "#next .btn") : `li.e[data-id="${CSS.escape(id)}"] .eye`);
   }
-  else if (act === "close-detail") { detailId = null; renderDetail(); document.querySelectorAll("#tree .node.sel").forEach(n => n.classList.remove("sel")); }
-  else if (act === "up" || act === "down") {
-    const i = visible.indexOf(id), ref = visible[act === "up" ? i - 1 : i + 1];
-    if (ref) { moveTo(S.order[S.sel], id, ref, act === "down"); renderPanel(`[data-id="${CSS.escape(id)}"] [data-act="${act}"]:not([disabled])`); }
+  else if (a === "close-detail") { detailId = null; renderDetail(); document.querySelectorAll("#tree .node.sel").forEach(n => n.classList.remove("sel")); }
+  else if (a === "up" || a === "down") {
+    const i = visible.indexOf(id), ref = visible[a === "up" ? i - 1 : i + 1];
+    if (ref) { act(() => moveTo(S.order[S.sel], id, ref, a === "down")); renderPanel(`[data-id="${CSS.escape(id)}"] [data-act="${a}"]:not([disabled])`); }
   }
-  else if (act === "edit") { editing = editing === id ? null : id; renderPanel(`[data-id="${CSS.escape(id)}"] .in`); }
-  else if (act === "cancel") { editing = null; renderPanel(); }
-  else if (act === "del") {
+  else if (a === "edit") { editing = editing === id ? null : id; renderPanel(`[data-id="${CSS.escape(id)}"] .in`); }
+  else if (a === "cancel") { editing = null; renderPanel(); }
+  else if (a === "del") {
     withUndo(`Removed “${title()}”`, () => {
       const mine = S.cItems[S.sel] || [];
       if (mine.some(x => x.id === id)) S.cItems[S.sel] = mine.filter(x => x.id !== id);
@@ -1130,18 +1151,22 @@ document.addEventListener("click", e => {
       delete S.edits[key];
     });
   }
-  else if (act === "restore") { withUndo("Restored removed titles", () => { S.removed = S.removed.filter(k => !k.startsWith(S.sel + ":")); }); }
-  else if (act === "reset" || act === "delu") { confirming = act === "reset" ? "reset" : "u"; renderPanel('[data-act="cancel-c"]'); }
-  else if (act === "cancel-c") { confirming = null; renderPanel(); }
-  else if (act === "reset-yes") { const snap = JSON.stringify(S); S = DEF(); confirming = null; select("616"); toast("Sandbox reset", snap); }
-  else if (act === "delu-yes") {
-    const snap = JSON.stringify(S), u = S.sel;
-    S.cUnis = S.cUnis.filter(x => x.id !== u);
-    delete S.cItems[u]; delete S.order[u];
-    S.removed = S.removed.filter(k => !k.startsWith(u + ":"));
+  else if (a === "restore") { withUndo("Restored removed titles", () => { S.removed = S.removed.filter(k => !k.startsWith(S.sel + ":")); }); }
+  else if (a === "reset" || a === "delu") { confirming = a === "reset" ? "reset" : "u"; renderPanel('[data-act="cancel-c"]'); }
+  else if (a === "cancel-c") { confirming = null; renderPanel(); }
+  else if (a === "reset-yes") {
+    const old = act(() => fromMap({}, S));
+    Object.assign(S, {mode:"story", kind:"all", hideSeen:false}); confirming = null; select("616"); toast("Sandbox reset", old);
+  }
+  else if (a === "delu-yes") {
+    const u = S.sel, old = act(() => {
+      S.cUnis = S.cUnis.filter(x => x.id !== u);
+      delete S.cItems[u]; delete S.order[u];
+      S.removed = S.removed.filter(k => !k.startsWith(u + ":"));
+    });
     confirming = null;
     select("616");
-    toast("Universe deleted", snap);
+    toast("Universe deleted", old);
   }
 });
 
@@ -1170,7 +1195,7 @@ tl.addEventListener("drop", e => {
   const li = e.target.closest("li.e");
   if (!dragId || !li || li.dataset.id === dragId) return;
   e.preventDefault();
-  moveTo(S.order[S.sel], dragId, li.dataset.id, li.classList.contains("over-bot"));
+  act(() => moveTo(S.order[S.sel], dragId, li.dataset.id, li.classList.contains("over-bot")));
   dragId = null; renderPanel();
 });
 tl.addEventListener("dragend", () => { dragId = null; clearOver(); });
@@ -1183,10 +1208,35 @@ renderAll();
 // phones: start the sideways-scrolling tree centred on the trunk
 if (stage.scrollWidth > stage.clientWidth) stage.scrollLeft = (stage.scrollWidth - stage.clientWidth) / 2;
 
+// Another tab saved: take its changes entry by entry (state.js merge), keeping this tab's own view.
+// Only when both belong to the same account: during an account switch a tab may still hold the old one's.
+addEventListener("storage", e => {
+  if (e.key !== KEY || !e.newValue) return;
+  let r; try { r = clean(JSON.parse(e.newValue)); } catch { return; }
+  if (r.owner === S.owner && merge(S, r).changed) { editing = null; if (!uni(S.sel)) S.sel = "616"; renderAll(); }
+});
+// the date moves on at midnight, and release-day labels with it
+setInterval(() => { const d = localDay(); if (d !== TODAY) { TODAY = d; renderAll(); } }, 60e3);
+
 // hooks for sync.js (optional Google sign-in)
 window.mcuApp = {
   get: () => S,
-  set(s) { S = migrateIds({...DEF(), ...s}); editing = null; confirming = null; lastData = syncData(S); renderAll(); },
+  // the cloud copy: what this visitor changed, with stamps
+  synced: () => synced(S),
+  // merge a cloud copy in; true when this device has changes the cloud lacks
+  merge(raw) { const {changed, ahead} = merge(S, clean(raw, 2)); if (changed) { editing = null; if (!uni(S.sel)) S.sel = "616"; renderAll(); } return ahead; },
+  // An account signed in. If this browser's progress belongs to a different account, it is cleared, so the new
+  // account starts from its own cloud copy (true is returned). Progress made before anyone signed in here joins it.
+  // was: the account older versions remembered in their own key, used once.
+  claim(uid, was) {
+    if (!S.owner && was) S.owner = was;
+    const other = !!S.owner && S.owner !== uid;
+    if (other) { fromMap({}, S); S.stamps = {}; editing = null; if (!uni(S.sel)) S.sel = "616"; }
+    S.owner = uid;
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}   // written first, so save() can't merge the old account back in
+    if (other) renderAll();
+    return other;
+  },
   toast,
   onSave: null,
 };
