@@ -90,8 +90,13 @@ body.tva-on{overflow:hidden;background:var(--t-bezel2)}
 .c-branch{cursor:pointer;outline:none}
 .c-branch path{fill:none;stroke:var(--t-alert);stroke-width:2.5;filter:drop-shadow(0 0 3px rgba(255,106,61,.6))}
 .c-branch rect{fill:var(--t-alert)}
-.c-branch text{font:19px var(--t-crt);fill:#ff9466;text-transform:uppercase}
-.c-branch:hover path,.c-branch:focus-visible path{stroke-width:4}
+.c-branch text{fill:#ff9466}
+/* labels sit on a halo of screen glass, so a line passing near never cuts through the letters */
+.c-branch text,.c-measure{font:19px var(--t-crt);text-transform:uppercase}
+.c-branch text{paint-order:stroke;stroke:var(--t-glass);stroke-width:6px;stroke-linejoin:round}
+.c-measure{visibility:hidden}
+.c-lbl.hot text{fill:#ffc2a3}
+.c-branch.hot path{stroke-width:4}
 @keyframes blink{50%{opacity:.25}}
 
 /* branch registry */
@@ -130,6 +135,10 @@ body.tva-on{overflow:hidden;background:var(--t-bezel2)}
 @keyframes print{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0)}}
 .pp-head{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed var(--t-faint);font-size:15px;color:var(--t-dim);text-transform:uppercase}
 .pp-title{margin:10px 0 8px;font-weight:400;font-size:29px;line-height:1.02;text-transform:uppercase;color:var(--t-hot);text-wrap:balance}
+/* series art, printed like a photo clipped into the file: amber monochrome under the scanlines */
+.pp-photo{position:relative;margin:10px 0 2px;aspect-ratio:16/9;overflow:hidden;border:1px solid var(--t-dim)}
+.pp-photo img{display:block;width:100%;height:100%;object-fit:cover;filter:grayscale(1) sepia(1) saturate(2.4) hue-rotate(-14deg) brightness(.78) contrast(1.15)}
+.pp-photo::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px)}
 .pp-syn{margin:0 0 10px;font-size:19px;line-height:1.2}
 .pp-syn b{display:block;font-weight:400;font-size:15px;color:var(--t-dim);text-transform:uppercase}
 .pp-fields{margin:0}
@@ -236,7 +245,9 @@ body.tva-on{overflow:hidden;background:var(--t-bezel2)}
 .pp-eps summary span{color:var(--t-amber)}
 .pp-eps summary:focus-visible{outline:1px dashed var(--t-amber);outline-offset:2px}
 .pp-eps ol{list-style:none;margin:4px 0 0;padding:0}
-.pp-eps li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:6px;padding:3px 0;border-bottom:1px dotted var(--t-faint)}
+.pp-eps li{display:grid;grid-template-columns:30px 84px minmax(0,1fr);align-items:start;gap:8px;padding:4px 0;border-bottom:1px dotted var(--t-faint)}
+.pp-eps .ep-st{background:var(--t-glass);border:1px solid var(--t-faint);border-radius:0}
+.pp-eps .ep-st img{filter:grayscale(1) sepia(1) saturate(2.4) hue-rotate(-14deg) brightness(.78) contrast(1.15)}
 .pp-eps .ep-n{color:var(--t-dim)}
 .pp-eps b{font-weight:400;color:var(--t-hot);text-transform:uppercase}
 .pp-eps p{margin:0;font-size:16px;line-height:1.2;color:var(--t-dim)}

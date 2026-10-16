@@ -1,6 +1,6 @@
 // TVA View: an alternate interface modelled on the TVA's analog control rooms in Loki
 // (1960s office hardware, 1980s 8-bit CRT graphics, case files and card catalogues).
-// Fan design: original artwork only, no official logos or characters. Shares state with app.js.
+// Fan design: original artwork apart from TVmaze and TMDB art in case files, no official logos or characters. Shares state with app.js.
 (() => {
 const TK = "mcu-tva-view";
 const BULLETINS = [
@@ -12,8 +12,13 @@ const BULLETINS = [
   "Reminder: all records stay on this terminal unless the agent signs in.",
 ];
 const MODES = [["story", "Story"], ["release", "Release"], ["my", "Mine"], ["narrative", "Narrative"]];
-let on = false, caseId = null, query = "", lastCase = null, lastUni = null, slam = false;
-try { on = localStorage.getItem(TK) === "1"; } catch {}
+// The open case IS the classic view's open title (detailId in app.js), so both modes stay on the same one.
+// With nothing open, the terminal still shows a case (the classic view's "up next") without selecting it:
+// caseFor() says what is on screen; only a click, Prev/Next or a stamp makes it the open title.
+let on = false, entered = null, query = "", lastCase = null, lastUni = null, slam = false;
+// every visit starts in the classic view (so the tree's growth plays); TVA View opens only on request.
+// The key earlier versions used to reopen it on load is cleared.
+try { localStorage.removeItem(TK); } catch {}
 
 const root = document.createElement("div");
 root.id = "tva"; root.hidden = true;
@@ -73,7 +78,7 @@ function build() {
   <section class="win w-case" aria-label="Case file"><h2 class="w-t">Case file</h2><div class="t-case" id="tCase" aria-live="polite"></div></section>
   <footer class="s-status">
     <div class="t-ticker" aria-hidden="true"><div class="tk-track">${[...BULLETINS, ...BULLETINS].map(b => `<span>${esc(b)}</span>`).join("")}</div></div>
-    <p class="t-legal">Unofficial fan project, not affiliated with or endorsed by Marvel Studios or The Walt Disney Company. All titles and characters are trademarks of their respective owners. This TVA-inspired view uses original artwork only.</p>
+    <p class="t-legal">Unofficial fan project, not affiliated with or endorsed by Marvel Studios or The Walt Disney Company. All titles and characters are trademarks of their respective owners. Artwork from TVmaze and TMDB; everything else in this view is original.</p>
   </footer>
   <nav class="s-tabs" aria-label="Screens">${PANES.map(([p, l]) => `<button type="button" data-pane="${p}">${l}</button>`).join("")}</nav>
 </div>`;
@@ -90,8 +95,50 @@ function renderRegistry() {
   }).join("")}</div>`).join("");
 }
 
+// label widths in chart units, measured once per name in the live SVG (VT323); estimated when not laid out
+const labelW = new Map();
+document.fonts?.ready.then(() => { labelW.clear(); layoutCache.key = null; });   // re-measure once the font is in
+function labelWidths(texts) {
+  const todo = texts.filter(s => !labelW.has(s));
+  if (todo.length) {
+    const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    t.setAttribute("class", "c-measure"); $("#tChart").appendChild(t);
+    for (const s of todo) { t.textContent = s.toUpperCase(); const w = t.getComputedTextLength(); if (w) labelW.set(s, w); }
+    t.remove();
+  }
+  return texts.map(s => Math.max(labelW.get(s) || 0, s.length * 8.4));
+}
+
+// Branches diverge above the line in 8-bit steps, like the TVA's chronomonitor plots. Each one is placed by
+// search, not by a fixed rule: try rungs from the lowest up (and both directions), and take the first
+// where its label touches no other branch's line or label and its lines cross no other label. Labels start
+// far enough past their corner that a diagonal climbing on from the same fork passes to their left.
+let layoutCache = {key:null, placed:[]};
+function placeBranches(forks, Y) {
+  const placed = [], wide = labelWidths(forks.map(f => "Branch · " + f.b.name));
+  const inBox = (bx, px, py) => px >= bx[0] - 3 && px <= bx[2] + 3 && py >= bx[1] - 3 && py <= bx[3] + 3;
+  const segHits = (bx, [x1, y1, x2, y2]) => {
+    const n = Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 3);
+    for (let i = 0; i <= n; i++) if (inBox(bx, x1 + (x2 - x1) * i / n, y1 + (y2 - y1) * i / n)) return true;
+    return false;
+  };
+  const boxHits = (p, q) => p[0] < q[2] + 6 && q[0] < p[2] + 6 && p[1] < q[3] + 4 && q[1] < p[3] + 4;
+  const layout = (x, dir, r, w) => {
+    const h = 40 + r * 34, ex = x + dir * h, lx = ex + dir * 34, end = ex + dir * (34 + w + 12);
+    const box = dir > 0 ? [lx, Y - h - 26, lx + w, Y - h - 4] : [lx - w, Y - h - 26, lx, Y - h - 4];
+    return {x, dir, h, ex, lx, end, box, segs:[[x, Y, ex, Y - h], [ex, Y - h, end, Y - h]], fits:Math.min(ex, end) >= 4 && Math.max(ex, end) <= 996};
+  };
+  const clear = L => L.fits && placed.every(o => !boxHits(L.box, o.box) && !o.segs.some(sg => segHits(L.box, sg)) && !L.segs.some(sg => segHits(o.box, sg)));
+  forks.forEach(({b, x, dir}, k) => {
+    let L = null;
+    for (let r = 0; r < 10 && !L; r++) for (const d of [dir, -dir]) { const c = layout(x, d, r, wide[k]); if (clear(c)) { L = c; break; } }
+    placed.push({b, ...(L || layout(x, dir, placed.length, wide[k]))});   // ponytail: no room at all, stack and overlap
+  });
+  return placed;
+}
+
 function renderMonitor(boot) {
-  const u = uni(S.sel), es = story(u), n = es.length, Y = 236, X0 = 40, X1 = 960;
+  const u = uni(S.sel), es = story(u), n = es.length, Y = 236, X0 = 40, X1 = 960, shown = caseFor(u);
   const X = i => n <= 1 ? 500 : X0 + (X1 - X0) * i / (n - 1);
   let g = "", lastYear = null, lastLbl = -1e9;
   const forks = [];
@@ -101,15 +148,21 @@ function renderMonitor(boot) {
     if (yn !== Infinity && yn !== lastYear && x - lastLbl > 58) { g += `<path class="c-tick" d="M${x} ${Y + 10}v10"/><text class="c-yr" x="${x}" y="${Y + 40}" text-anchor="middle">${yn}</text>`; lastLbl = x; }
     if (yn !== Infinity) lastYear = yn;
     if (u.id === "616") unis().filter(b => b.at === e.id).forEach(b => forks.push({b, x, dir:x > 760 ? -1 : 1}));
-    g += `<g class="c-node${S.watched[e.id] ? " done" : ""}${e.id === caseId ? " cur" : ""}" data-case="${esc(e.id)}" tabindex="0" role="button" aria-label="${esc(e.t)}"><rect class="c-hit" x="${x - 8}" y="${Y - 12}" width="16" height="24"/><rect x="${x - 4}" y="${Y - 4}" width="8" height="8"/></g>`;
+    g += `<g class="c-node${S.watched[e.id] ? " done" : ""}${e.id === shown ? " cur" : ""}" data-case="${esc(e.id)}" tabindex="0" role="button" aria-label="${esc(e.t)}"><rect class="c-hit" x="${x - 8}" y="${Y - 12}" width="16" height="24"/><rect x="${x - 4}" y="${Y - 4}" width="8" height="8"/></g>`;
   });
-  // branches diverge above the line in 8-bit steps, like the TVA's chronomonitor plots;
-  // left-running branches take the lowest rungs so no line crosses another branch's label
-  forks.sort((p, q) => p.dir - q.dir).forEach(({b, x, dir}, k) => {
-    const h = 40 + k * 34, ex = x + dir * h, end = dir > 0 ? Math.min(ex + 80, 995) : Math.max(ex - 150, 5);
-    g += `<g class="c-branch" data-u="${esc(b.id)}" tabindex="0" role="button" aria-label="Open branch ${esc(b.name)}"><path d="M${x} ${Y}L${ex} ${Y - h}H${end}"/><rect x="${ex - 4}" y="${Y - h - 4}" width="8" height="8"/><text x="${ex + dir * 8}" y="${Y - h - 10}" text-anchor="${dir > 0 ? "start" : "end"}">Branch · ${esc(b.name)}</text></g>`;
-  });
-  const cur = es.find(e => e.id === caseId);
+  forks.sort((p, q) => p.x - q.x);
+  const key = u.id + "|" + forks.map(f => `${f.b.id}:${f.x}:${f.dir}`).join(",");
+  if (layoutCache.key !== key) layoutCache = {key, placed:placeBranches(forks, Y)};   // same branches, same layout
+  let labels = "";
+  for (const {b, x, ex, h, lx, end, dir} of layoutCache.placed) {
+    g += `<g class="c-branch" data-u="${esc(b.id)}" tabindex="0" role="button" aria-label="Open branch ${esc(b.name)}"><path d="M${x} ${Y}L${ex} ${Y - h}H${end}"/><rect x="${ex - 4}" y="${Y - h - 4}" width="8" height="8"/></g>`;
+    labels += `<g class="c-branch c-lbl" data-u="${esc(b.id)}" aria-hidden="true"><text x="${lx}" y="${Y - h - 10}" text-anchor="${dir > 0 ? "start" : "end"}">Branch · ${esc(b.name)}</text></g>`;
+  }
+  g += labels;   // labels last, so no line is ever drawn over one
+  // the monitor grows upward when the branches need more height than its default frame
+  const top = Math.min(70, ...layoutCache.placed.map(o => o.box[1] - 8));
+  $("#tChart").setAttribute("viewBox", `0 ${top} 1000 ${295 - top}`);
+  const cur = es.find(e => e.id === shown);
   if (cur) { const x = Math.round(X(es.indexOf(cur))); g += `<path class="c-cursor" d="M${x} ${Y - 30}V${Y - 14}M${x - 6} ${Y - 20}L${x} ${Y - 14}L${x + 6} ${Y - 20}"/>`; }
   $("#tChart").innerHTML = g;
   const [t, w] = stats(u);
@@ -131,30 +184,30 @@ function renderGauge() {
 }
 
 function renderLedger() {
-  const u = uni(S.sel), list = ordered(u), q = query.toLowerCase();
+  const u = uni(S.sel), list = ordered(u), q = query.toLowerCase(), shown = caseFor(u), pos = new Map(list.map((e, i) => [e.id, i + 1]));
   const rows = list.filter(e => (!q || e.t.toLowerCase().includes(q)) && !(S.hideSeen && S.watched[e.id]));
   const modeName = (MODES.find(([m]) => m === (S.mode === "narrative" && u.id !== "616" ? "story" : S.mode)) || MODES[0])[1];
   $("#tLgHead").innerHTML = `<span>Temporal ledger · ${esc(u.name)}</span><span>Order: ${modeName} · ${rows.length} of ${list.length}</span>`;
   $("#tLedger").innerHTML = rows.map(e => {
-    const i = list.indexOf(e) + 1, seen = S.watched[e.id];
-    return `<li class="${seen ? "done" : ""}${e.id === caseId ? " cur" : ""}"><button type="button" data-case="${esc(e.id)}"><span class="lg-no">${pad(i)}</span><span class="lg-t">${esc(e.t)}</span><span class="lg-y">${esc(e.y || "?")}${e.c === "e" ? " est." : ""}</span><span class="lg-r">${stamp(e.rel)}</span><span class="lg-s">${seen ? "Processed" : "Pending"}</span></button></li>`;
+    const i = pos.get(e.id), seen = S.watched[e.id];
+    return `<li class="${seen ? "done" : ""}${e.id === shown ? " cur" : ""}"><button type="button" data-case="${esc(e.id)}"><span class="lg-no">${pad(i)}</span><span class="lg-t">${esc(e.t)}</span><span class="lg-y">${esc(e.y || "?")}${e.c === "e" ? " est." : ""}</span><span class="lg-r">${stamp(e.rel)}</span><span class="lg-s">${seen ? "Processed" : "Pending"}</span></button></li>`;
   }).join("") || `<li class="lg-empty">No records match this query.</li>`;
 }
 
 function renderCase() {
   const u = uni(S.sel), all = story(u);
   if (!all.length) { $("#tCase").innerHTML = `<div class="folder"><div class="paper"><p>No cases filed in this branch yet.</p></div></div>`; return; }
-  if (!all.some(e => e.id === caseId)) caseId = (all.find(e => !S.watched[e.id]) || all[0]).id;
-  const e = all.find(x => x.id === caseId), pos = all.indexOf(e) + 1, seen = S.watched[e.id], soon = e.rel && e.rel > TODAY;
+  const shown = caseFor(u), e = all.find(x => x.id === shown), pos = all.indexOf(e) + 1, seen = S.watched[e.id], soon = e.rel && e.rel > TODAY;
   const also = unis().filter(x => x.id !== u.id && entries(x).some(y => y.id === e.id));
   const ni = u.id === "616" ? NARRATIVE.items.findIndex(([t]) => t[0] !== "@" && slug(t) === e.id) : -1, nn = ni >= 0 ? NARRATIVE.items[ni] : null;
-  const fresh = lastCase !== caseId || lastUni !== u.id;
-  lastCase = caseId; lastUni = u.id;
+  const fresh = lastCase !== shown || lastUni !== u.id;
+  lastCase = shown; lastUni = u.id;
   const slamNow = slam; slam = false;
   keepOpen($("#tCase"), e.id, ".pp-eps", () => $("#tCase").innerHTML = `<div class="folder${fresh ? " deliver" : ""}">
     <div class="folder-tab">Case № ${pad(pos)} / ${pad(all.length)}</div>
     <div class="paper k-${e.k}">
       <div class="pp-head"><span>Form TV-1185 · Event record</span><span>${esc(u.des)}</span></div>
+      ${artImg(e.id, "pp-photo")}
       <h3 class="pp-title">${esc(e.t)}</h3>
       ${typeof SYN !== "undefined" && SYN[e.id] ? `<p class="pp-syn"><b>Summary</b> ${esc(SYN[e.id])}</p>` : ""}
       <dl class="pp-fields">
@@ -179,6 +232,10 @@ function renderAgent() {
   $("#tAgent").innerHTML = name ? `<span>Agent</span><b>${esc(name)}</b>` : gbtn ? `<button type="button" class="t-login" data-tact="login">Agent sign-in</button>` : `<span>Agent</span><b>Guest terminal</b>`;
 }
 
+const caseFor = u => {
+  const all = story(u);
+  return all.some(e => e.id === detailId) ? detailId : (upNext(u) || all[0])?.id ?? null;
+};
 function render(boot) {
   if (!on) return;
   renderRegistry(); renderGauge(); renderLedger(); renderCase(); renderMonitor(boot); renderAgent();
@@ -186,7 +243,7 @@ function render(boot) {
 
 function pick(id) {
   if (id === S.sel) return;
-  S.sel = id; caseId = null; editing = null; confirming = null;
+  S.sel = id; detailId = null; editing = null; confirming = null;
   try { history.replaceState(null, "", "#" + id); } catch {}
   renderPanel();          // keeps the classic view in step and saves; onRender redraws the TVA screens
   render(true);
@@ -194,9 +251,12 @@ function pick(id) {
 }
 
 function openCase(id) {
-  caseId = id;
+  detailId = id;
   render(false);
-  // keep the current row visible inside the ledger box only; the page itself never moves
+  revealCase();
+}
+// keep the current row visible inside the ledger box only; the page itself never moves
+function revealCase() {
   const lg = $("#tLedger"), li = lg.querySelector("li.cur");
   if (li) {
     const top = li.offsetTop - lg.offsetTop, bottom = top + li.offsetHeight;
@@ -206,7 +266,7 @@ function openCase(id) {
 }
 
 function step(d) {
-  const list = ordered(uni(S.sel)), i = list.findIndex(e => e.id === caseId);
+  const u = uni(S.sel), list = ordered(u), shown = caseFor(u), i = list.findIndex(e => e.id === shown);
   const next = list[Math.min(list.length - 1, Math.max(0, (i < 0 ? 0 : i) + d))];
   if (next) openCase(next.id);
 }
@@ -228,17 +288,33 @@ function setOn(v) {
 
 function power(v) {
   on = v;
-  try { localStorage.setItem(TK, v ? "1" : "0"); } catch {}
   document.body.classList.toggle("tva-on", on);
   $(".app").hidden = on;
   root.hidden = !on;
   btn.textContent = on ? "Exit TVA View" : "TVA View";
   btn.setAttribute("aria-pressed", on);
-  if (on) { build(); lastCase = null; render(true); root.querySelector(".scr").classList.add("crt-on"); }
-  else { root.innerHTML = ""; renderAll(); }
+  if (on) {
+    const had = !!detailId;   // a title was open in the classic view: phones land on its case file
+    entered = detailId;
+    build(); lastCase = null; render(true); revealCase(); root.querySelector(".scr").classList.add("crt-on");
+    if (phone() && had) setPane("case");
+  } else {
+    root.innerHTML = ""; renderAll();
+    // a different title was opened in the terminal: bring its card into view; otherwise leave the page be
+    if (detailId && detailId !== entered) $("#detail .detail")?.scrollIntoView({block:"center"});
+  }
 }
 
 btn.addEventListener("click", () => setOn(!on));
+// a branch is drawn as two groups (line, then its label on top); pointing at or focusing either lights both
+const heat = (e, v) => {
+  const id = e.target.closest?.("#tChart .c-branch")?.dataset.u;
+  if (id) document.querySelectorAll(`#tChart .c-branch[data-u="${CSS.escape(id)}"]`).forEach(g => g.classList.toggle("hot", v));
+};
+root.addEventListener("pointerover", e => heat(e, true));
+root.addEventListener("pointerout", e => heat(e, false));
+root.addEventListener("focusin", e => heat(e, true));
+root.addEventListener("focusout", e => heat(e, false));
 root.addEventListener("click", e => {
   const c = e.target.closest("[data-case]");
   if (c) { openCase(c.dataset.case); if (phone()) setPane("case"); return; }
@@ -252,7 +328,8 @@ root.addEventListener("click", e => {
   if (s) { step(+s.dataset.step); return; }
   const a = e.target.closest("[data-tact]");
   if (a?.dataset.tact === "stamp") {
-    const id = caseId, t = entries(uni(S.sel)).find(x => x.id === id)?.t || "Case", was = !!S.watched[id];
+    detailId = caseFor(uni(S.sel));   // stamping a case also opens it
+    const id = detailId, t = entries(uni(S.sel)).find(x => x.id === id)?.t || "Case", was = !!S.watched[id];
     slam = !was;
     withUndo(was ? `Stamp revoked: “${t}”` : `Processed: “${t}”`, () => { was ? delete S.watched[id] : S.watched[id] = true; });
   }
@@ -263,7 +340,12 @@ root.addEventListener("keydown", e => {
   const g = e.target.closest("g[data-case], g[data-u]");
   if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); g.dataset.case ? openCase(g.dataset.case) : pick(g.dataset.u); }
 });
-root.addEventListener("input", e => { if (e.target.id === "tQuery") { query = e.target.value.trim(); renderLedger(); } });
+let typing;
+root.addEventListener("input", e => {
+  if (e.target.id !== "tQuery") return;
+  const v = e.target.value.trim();
+  clearTimeout(typing); typing = setTimeout(() => { if (on) { query = v; renderLedger(); } }, 120);   // TVA may have closed meanwhile
+});
 root.addEventListener("change", e => { if (e.target.id === "tHide") { S.hideSeen = e.target.checked; renderPanel(); } });
 document.addEventListener("keydown", e => {
   if (!on || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -278,5 +360,4 @@ window.mcuApp.onRender = () => render(false);
 new MutationObserver(() => on && renderAgent()).observe($("#account"), {childList:true, subtree:true, characterData:true});
 btn.textContent = "TVA View";
 btn.setAttribute("aria-pressed", "false");
-if (on) setOn(true);
 })();

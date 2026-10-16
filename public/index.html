@@ -37,13 +37,13 @@
 
   <header class="hero">
     <div class="account" id="account" hidden></div>
-    <div class="news"><b>New</b>VisionQuest added to the Sacred Timeline</div>
     <h1>Every Marvel story.<br><span>One tree.</span></h1>
     <p class="lede"><b id="nTitles">185</b> films and series across <b id="nUnis">24</b> universes, in Marvel's official story order. Track what you've seen, branch by branch.</p>
     <div class="cta">
-      <button class="btn primary" type="button" id="start">Start the Sacred Timeline</button>
+      <button class="btn primary" type="button" id="start">Start the Sacred Timeline<span class="bi" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4.5 11.5l7-7M6 4.5h5.5V10"/></svg></span></button>
       <button class="btn ghost" type="button" data-pal>Search <kbd class="kk">Ctrl K</kbd></button>
     </div>
+    <p class="news"><b>New:</b> VisionQuest added to the Sacred Timeline</p>
     <div class="meter" id="meter"></div>
   </header>
 
@@ -88,7 +88,7 @@
     <footer>
       <p>The Sacred Timeline follows Marvel's own Disney+ Complete Timeline (June 2026) and the official 2023 timeline book; newer titles use Marvel's statements. Other universes use on-screen dates. Release dates are cross-checked against Wikipedia, Wikidata and TVmaze. A dotted year is a best estimate where no official date exists.</p>
       <p>Shortcuts: <kbd class="kk">Ctrl K</kbd> search, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> change order. Watch marks and edits stay in this browser. If you sign in with Google, they are also stored under your Google account ID so they follow you to other devices; nothing else about you is stored, and you can delete it anytime.</p>
-      <p>Unofficial fan project. Not affiliated with or endorsed by Marvel Studios or The Walt Disney Company. All titles and characters are trademarks of their respective owners.</p>
+      <p>Unofficial fan project. Not affiliated with or endorsed by Marvel Studios or The Walt Disney Company. All titles and characters are trademarks of their respective owners. Series artwork, episode titles and air dates from <a href="https://www.tvmaze.com/" rel="noopener" target="_blank">TVmaze</a>; film artwork from <a href="https://www.themoviedb.org/" rel="noopener" target="_blank">TMDB</a>. This product uses the TMDB API but is not endorsed or certified by TMDB. Episode summaries are our own.</p>
       <div class="rowx" id="foot"></div>
     </footer>
   </main>
@@ -101,9 +101,11 @@
 </dialog>
 <svg id="beam" aria-hidden="true" hidden></svg>
 <div id="toast" role="status" aria-live="polite" hidden><span id="toastMsg"></span><button type="button" id="undo">Undo</button></div>
+<!-- episodes.js (episode lists + which titles have art) first: app.js draws the first screen as soon as it runs.
+     synopses.js needs app.js's slug(), and is only read once a title is opened. -->
+<script src="episodes.js"></script>
 <script src="app.js"></script>
 <script src="synopses.js"></script>
-<script src="episodes.js"></script>
 <script src="tva.js"></script>
 <script type="module" src="sync.js"></script>
 </body>
