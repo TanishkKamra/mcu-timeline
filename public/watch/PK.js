@@ -1,2 +1,2 @@
 // Where to watch, built by build_watch.py from TMDB watch-provider data (powered by JustWatch). Do not edit by hand.
-WATCH["PK"] = {"spidermanhomecoming":[[8,1]],"spidermanfarfromhome":[[8,1]],"daredevil2003":[[8,1]],"spiderman2":[[8,1]],"theamazingspiderman":[[8,1]],"theamazingspiderman2":[[8,1]],"venomlettherebecarnage":[[8,1]],"morbius":[[8,1]],"blade":[[1899,1]],"bladeii":[[1899,1]],"bladetrinity":[[8,1],[1899,1]]};
+WATCH["PK"] = {"spidermanhomecoming":[[8,1]],"spidermanfarfromhome":[[8,1]],"daredevil2003":[[8,1]],"spiderman2":[[8,1]],"theamazingspiderman":[[8,1]],"theamazingspiderman2":[[8,1]],"venomlettherebecarnage":[[8,1]],"blade":[[1899,1]],"bladeii":[[1899,1]],"bladetrinity":[[8,1],[1899,1]]};

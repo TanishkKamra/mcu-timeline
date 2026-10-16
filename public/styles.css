@@ -209,12 +209,35 @@ dialog#pal::backdrop{background:rgba(0,0,0,.55);backdrop-filter:blur(3px)}
 #toast button{background:none;border:0;color:var(--bg);font-weight:700;cursor:pointer;padding:2px 6px;border-radius:5px}
 #toast button:hover{background:rgba(0,0,0,.08)}
 
+/* very short windows (zoomed to 300-400%, or a phone on its side): the control bar and year labels scroll
+   with the list instead of pinning over it */
+@media (max-height:480px){
+  .ctrl,li.yr{position:static}
+}
+/* Windows high contrast: colours are replaced by the system's, so watched marks, the pressed order and the
+   switch are drawn in system colours that always differ */
+@media (forced-colors:active){
+  .eye,.switch input,.seg button{forced-color-adjust:none}
+  .eye{background:Canvas;border-color:CanvasText}
+  .seen .eye{background:Highlight;border-color:Highlight}
+  .seen .eye svg{stroke:HighlightText}
+  .seg button{background:Canvas;color:CanvasText}
+  .seg button[aria-pressed="true"]{background:Highlight;color:HighlightText}
+  .switch input{background:Canvas;border:1px solid CanvasText}
+  .switch input::after{background:CanvasText}
+  .switch input:checked{background:Highlight;border-color:Highlight}
+  .switch input:checked::after{background:HighlightText}
+  .node.seen .core{fill:Highlight;stroke:Highlight}
+}
 @media (max-width:980px){
   .app{grid-template-columns:1fr;grid-template-areas:"hero" "stage" "panel"}
   .stage{position:relative;top:0;height:auto}
   #tree{height:auto;aspect-ratio:1200/1050}
   .hero,.panel{border-left:0;padding-inline:16px}
   .hero{padding-top:28px;border-bottom:0}
+}
+@media (max-width:420px){
+  .hero{padding-top:58px}   /* clear the TVA View button above the headline */
   .panel{border-top:1px solid var(--line)}
   .ctrl{margin-inline:-16px;padding-inline:16px}
   .brand{display:none}
@@ -320,7 +343,7 @@ li.e .t:hover{color:var(--strand)}
 .dt-x:hover{color:var(--fg);background:var(--hover)}
 .detail h3{margin:6px 0 0;font-size:1.25rem;letter-spacing:-.025em;font-weight:650;line-height:1.2;text-wrap:balance}
 .dt-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin:12px 0 0}
-.dt-facts dt{font-size:11.5px;color:var(--faint)}
+.dt-facts dt{font-size:11.5px;color:var(--muted)}
 .dt-facts dd{margin:2px 0 0;font:500 13px var(--mono);color:var(--fg)}
 .dt-facts dd.est{text-decoration:underline dotted var(--faint);text-underline-offset:4px;cursor:help}
 .dt-note{margin:10px 0 0;font-size:13px;color:var(--gold)}

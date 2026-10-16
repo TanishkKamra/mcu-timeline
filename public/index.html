@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://lh3.googleusercontent.com; connect-src https://*.googleapis.com https://www.gstatic.com; frame-src https://*.firebaseapp.com https://accounts.google.com; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://lh3.googleusercontent.com; connect-src 'self' https://*.googleapis.com https://www.gstatic.com; frame-src https://*.firebaseapp.com https://accounts.google.com; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <title>MCU Timeline Sandbox</title>
 <meta name="description" content="Every Marvel film and series on one tree: 24 universes in Marvel's official story order. Track what you've watched, branch by branch. Free, unofficial fan project.">
@@ -38,7 +38,7 @@
   <header class="hero">
     <div class="account" id="account" hidden></div>
     <h1>Every Marvel story.<br><span>One tree.</span></h1>
-    <p class="lede"><b id="nTitles">185</b> films and series across <b id="nUnis">24</b> universes, in Marvel's official story order. Track what you've seen, branch by branch.</p>
+    <p class="lede"><b id="nTitles">195</b> films and series across <b id="nUnis">24</b> universes, in Marvel's official story order. Track what you've seen, branch by branch.</p>
     <div class="cta">
       <button class="btn primary" type="button" id="start">Start the Sacred Timeline<span class="bi" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4.5 11.5l7-7M6 4.5h5.5V10"/></svg></span></button>
       <button class="btn ghost" type="button" data-pal>Search <kbd class="kk">Ctrl K</kbd></button>
@@ -110,6 +110,7 @@
      synopses.js needs app.js's slug(), and is only read once a title is opened. -->
 <script src="episodes.js"></script>
 <script src="upcoming.js"></script>
+<script src="state.js"></script>
 <script src="app.js"></script>
 <script src="synopses.js"></script>
 <script src="tva.js"></script>

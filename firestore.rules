@@ -4,11 +4,18 @@ service cloud.firestore {
     // each signed-in user can read and write only their own progress document
     match /users/{uid} {
       allow read, delete: if request.auth != null && request.auth.uid == uid;
+      // the site signs in with Google only: anonymous accounts can't write
       allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
         && request.resource.data.keys().hasOnly(['data', 'updatedAt'])
         && request.resource.data.data is string
-        && request.resource.data.data.size() < 500000
-        && request.resource.data.updatedAt is int;
+        // characters, at most 4 bytes each in UTF-8: stays under Firestore's 1 MiB per document
+        && request.resource.data.data.size() <= 250000
+        // only a record of when (merging uses per-entry stamps inside data), but it must be a real time:
+        // within a day of the server's clock
+        && request.resource.data.updatedAt is int
+        && request.resource.data.updatedAt > request.time.toMillis() - 86400000
+        && request.resource.data.updatedAt < request.time.toMillis() + 86400000;
     }
   }
 }

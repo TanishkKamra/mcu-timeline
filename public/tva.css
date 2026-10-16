@@ -210,13 +210,22 @@ body.tva-on{overflow:hidden;background:var(--t-bezel2)}
   .scr{height:auto;min-height:100%;overflow:visible}
   .win{min-height:300px}
   .s-tabs{position:sticky;bottom:0;z-index:6;background:var(--t-glass)}
-  /* one line each for the header and command bar, so the window starts near the top */
-  .s-top{flex-wrap:nowrap;padding-bottom:4px}
   .s-brand span,.s-gauge{display:none}
+}
+/* wide enough: one line each for the header and command bar, so the window starts near the top */
+@media (max-height:560px) and (min-width:600px){
+  .s-top{flex-wrap:nowrap;padding-bottom:4px}
   .s-cmd{flex-wrap:nowrap}
   .s-q{flex:1 1 90px}
   .s-chk{white-space:nowrap}
   .s-step button{white-space:nowrap}
+}
+/* very narrow (small phones, or zoomed to 300-400%): the search box gets its own full line and the soft keys shrink to fit */
+@media (max-width:599px){
+  .s-q{flex:1 1 100%;min-width:0;display:flex}
+  .s-q input{flex:1;min-width:6em}
+  .s-tabs{gap:4px}
+  #tva .s-tabs button{font-size:12px;padding:6px 2px;min-width:0}   /* #tva: beats the font:inherit on #tva button */
 }
 
 /* CRT power on / off: a dot stretches to a line, then the picture snaps open (and the reverse on exit) */
