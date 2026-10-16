@@ -61,7 +61,7 @@ kbd{font:500 11px var(--mono);color:var(--muted);border:1px solid var(--line2);b
 .tree .stem path:not(.flow){stroke-width:1.45}
 .tree .stem path.halo{stroke-width:10}
 .tree .dim .core{opacity:.35}
-.tree .on>.stem path{stroke:url(#stemFade)}
+.tree .on>.stem path{stroke:var(--stem)}
 .tree .on path.halo{opacity:.16}
 .tree .dim path.halo{opacity:.03}
 @keyframes flow{to{stroke-dashoffset:-38}}
@@ -118,7 +118,7 @@ h1 span{color:var(--faint)}
 
 .next{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 16px;border-radius:14px;margin:7px;box-shadow:var(--ring);border:1px solid transparent;
   background:linear-gradient(var(--raise),var(--raise)) padding-box,linear-gradient(120deg,color-mix(in srgb,var(--strand) 55%,transparent),var(--line2) 45%,color-mix(in srgb,var(--gold) 45%,transparent)) border-box}
-.next .dt-art{grid-column:1/-1;margin:-14px -16px 2px;aspect-ratio:16/5}
+.next .dt-art{grid-column:1/-1;margin:-14px -16px 2px}
 .next small{display:block;color:var(--muted);font-size:13.5px}
 .next strong{display:block;font-size:17px;font-weight:600;letter-spacing:-.015em;line-height:1.3}
 .next .sub{margin-top:2px}
@@ -309,7 +309,7 @@ li.e .t:hover{color:var(--strand)}
 .detail{position:relative;padding:14px 16px;border-radius:14px;background:var(--raise);border:1px solid var(--line2);margin:7px;
   box-shadow:var(--ring),0 30px 60px -30px rgba(0,0,0,.6)}
 /* key-art banner: bleeds to the card edges and melts into the card */
-.dt-art{position:relative;margin:-14px -16px 12px;aspect-ratio:16/7;overflow:hidden;border-radius:13px 13px 0 0;background:var(--bg)}
+.dt-art{position:relative;margin:-14px -16px 12px;aspect-ratio:16/9;overflow:hidden;border-radius:13px 13px 0 0;background:var(--bg)}
 .dt-art img{display:block;width:100%;height:100%;object-fit:cover}
 .fresh .dt-art img{animation:artin .7s var(--out) both}
 .dt-art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,var(--raise) 100%)}
@@ -325,6 +325,23 @@ li.e .t:hover{color:var(--strand)}
 .dt-facts dd.est{text-decoration:underline dotted var(--faint);text-underline-offset:4px;cursor:help}
 .dt-note{margin:10px 0 0;font-size:13px;color:var(--gold)}
 .dt-also{margin:10px 0 0;font-size:14px;color:var(--muted)}
+/* where to watch: even tiles in a grid, best option first and marked by an outline, not a fill */
+.dt-watch:not(:empty){margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line)}
+.w-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px}
+.w-head b{white-space:nowrap}
+.w-head select{background:var(--raise);border:1px solid var(--line2);border-radius:7px;padding:3px 6px;font-size:13px;color:var(--muted);max-width:11rem}
+.w-list{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.w-list a{display:flex;align-items:center;gap:10px;height:100%;box-sizing:border-box;padding:7px 10px 7px 7px;border-radius:10px;background:var(--hover);border:1px solid var(--line);color:var(--fg);text-decoration:none;font-size:14px;font-weight:500;line-height:1.2;transition:background .2s var(--ease),border-color .2s var(--ease),transform .15s var(--ease)}
+.w-list a:hover{background:color-mix(in srgb,var(--fg) 6%,var(--hover));border-color:var(--line2)}
+.w-list a:active{transform:scale(.98)}
+.w-list li:first-child a{border-color:color-mix(in srgb,var(--strand) 55%,transparent)}
+.w-list span{min-width:0}
+.w-list b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.w-list img{width:30px;height:30px;border-radius:8px;flex:none}
+.w-list small{display:block;font-size:12px;font-weight:400;color:var(--muted)}
+.w-list li:first-child small{color:var(--strand)}
+.w-none,.w-foot{margin:10px 0 0;font-size:13px;color:var(--muted)}
+.w-foot a{color:var(--strand)}
 .dt-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .detail.charged{animation:charge 1.1s var(--out)}
 @keyframes charge{0%{box-shadow:0 0 0 6px color-mix(in srgb,var(--gold) 16%,transparent),0 0 0 7px var(--gold),inset 0 1px 0 rgba(255,255,255,.06),0 0 60px 0 color-mix(in srgb,var(--gold) 55%,transparent);background:color-mix(in srgb,var(--gold) 12%,var(--raise))}}

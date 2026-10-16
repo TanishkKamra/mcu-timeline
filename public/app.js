@@ -357,7 +357,7 @@ function renderTree() {
   const ST = Object.fromEntries(unis().map(u => [u.id, stats(u)]));
   for (const k in GEOM) delete GEOM[k];
   GEOM["616"] = [[{x:CX, y:BASE_Y}, {x:CX, y:BASE_Y - 130}, {x:CX, y:CY + 130}, {x:CX, y:CY}]];
-  let br = "", nodes = "";
+  let br = "", nodes = "", stemDefs = "";
   // crown: limbs radiate from the top of the trunk, universes fan out on an arc
   const groups = LIMBS.map(l => ({l, us:unis().filter(u => u.limb === l)})).filter(g => g.us.length);
   const slots = groups.reduce((n, g) => n + g.us.length, 0) + groups.length - 1;
@@ -373,7 +373,10 @@ function renderTree() {
     const T = TRUNK.tops, a0 = Math.floor(gi * T.length / groups.length), a1 = Math.max(a0 + 1, Math.floor((gi + 1) * T.length / groups.length));
     const starts = T.slice(a0, a1), c2 = polar(HUB - 80, ha), up = q => ({x:q.x + (q.x - CX) * .6, y:CY - 80});
     const mid = starts[starts.length >> 1], line = (q, o) => `M${q.x.toFixed(1)} ${q.y} C${(up(q).x + o).toFixed(1)} ${up(q).y},${c2.x} ${c2.y + o},${hub.x} ${hub.y}`;
-    let limb = `<g class="stem" style="--gd:.75s"><path class="halo" pathLength="1" d="${line(mid, 0)}"/>${[-9, -4.5, 0, 4.5, 9].map((o, j) => `<path pathLength="1" d="${line(starts[Math.floor(j * starts.length / 5)], o)}"/>`).join("")}<path class="flow" d="${line(mid, 0)}"/></g>`;
+    // a lit limb fades from trunk green into gold along its own run, trunk to hub, so it meets the gold
+    // branches beyond its hub without a seam, wherever on the crown that hub sits
+    stemDefs += `<linearGradient id="stem${gi}" gradientUnits="userSpaceOnUse" x1="${mid.x.toFixed(1)}" y1="${mid.y}" x2="${hub.x}" y2="${hub.y}"><stop offset="0" style="stop-color:var(--strand);stop-opacity:.25"/><stop offset=".85" style="stop-color:var(--gold)"/></linearGradient>`;
+    let limb = `<g class="stem" style="--gd:.75s;--stem:url(#stem${gi})"><path class="halo" pathLength="1" d="${line(mid, 0)}"/>${[-9, -4.5, 0, 4.5, 9].map((o, j) => `<path pathLength="1" d="${line(starts[Math.floor(j * starts.length / 5)], o)}"/>`).join("")}<path class="flow" d="${line(mid, 0)}"/></g>`;
     const limbSeg = [mid, up(mid), c2, hub];
     g.us.forEach((u, i) => {
       const a = angles[i], p = polar(R, a);
@@ -410,10 +413,9 @@ function renderTree() {
   const trunk = uni("616");
   $("#tree").innerHTML = `<defs><filter id="glow" filterUnits="userSpaceOnUse" x="-100" y="-200" width="1400" height="1400"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <linearGradient id="trunkFade" gradientUnits="userSpaceOnUse" x1="0" y1="${TOP_Y + 130}" x2="0" y2="${TOP_Y - 20}"><stop offset="0" style="stop-color:var(--gold)"/><stop offset="1" style="stop-color:var(--strand);stop-opacity:.45"/></linearGradient>
-    <linearGradient id="stemFade" gradientUnits="userSpaceOnUse" x1="0" y1="${CY + 50}" x2="0" y2="${CY - 50}"><stop offset="0" style="stop-color:var(--strand);stop-opacity:.15"/><stop offset="1" style="stop-color:var(--gold)"/></linearGradient>
     <radialGradient id="knot"><stop offset="0" style="stop-color:var(--strand);stop-opacity:.22"/><stop offset=".5" style="stop-color:var(--strand);stop-opacity:.08"/><stop offset="1" style="stop-color:var(--strand);stop-opacity:0"/></radialGradient>
-    <radialGradient id="throne"><stop offset="0" stop-color="#e8bb57" stop-opacity=".5"/><stop offset="1" stop-color="#e8bb57" stop-opacity="0"/></radialGradient></defs>
-    <ellipse cx="${CX}" cy="${BASE_Y + 20}" rx="160" ry="44" fill="url(#throne)"/>
+    <radialGradient id="throne"><stop offset="0" stop-color="#e8bb57" stop-opacity=".2"/><stop offset=".45" stop-color="#e8bb57" stop-opacity=".08"/><stop offset="1" stop-color="#e8bb57" stop-opacity="0"/></radialGradient>${stemDefs}</defs>
+    <ellipse cx="${CX}" cy="${BASE_Y + 26}" rx="320" ry="64" fill="url(#throne)"/>
     <g class="tree"><g class="trunk ${cls(["616"])}"><ellipse class="core" cx="${CX}" cy="${(BASE_Y + TOP_Y) / 2 + 10}" rx="70" ry="${(BASE_Y - TOP_Y) / 2 + 40}" fill="url(#knot)"/>${TRUNK.svg}</g>${br}</g>
     <text class="base" x="${CX}" y="${BASE_Y + 46}" text-anchor="middle">THE END OF TIME</text>
     ${leaf(trunk, CX, 905, flatLabel(trunk, CX + 54, 901, "start"), ST["616"], .9)}${nodes}`;
@@ -842,6 +844,67 @@ const keepOpen = (box, id, sel, render) => {
   if (open) box.querySelector(sel).open = true;
 };
 
+/* ---------- where to watch ---------- */
+// Ranked services for the visitor's country: free, then subscription, then rent and buy (TMDB watch-provider
+// data, powered by JustWatch, refreshed on every publish by build_watch.py). Loaded on first use only:
+// watch/index.js once, then watch/<CC>.js for the chosen country. The country comes from the device's time
+// zone, then its language region; the visitor can change it, and that choice is remembered on this device.
+const WATCH_KEY = "mcu-watch-cc", jsLoads = {};
+const loadJs = src => jsLoads[src] ||= new Promise((ok, fail) => {
+  const s = document.createElement("script");
+  s.src = src; s.onload = ok; s.onerror = () => { delete jsLoads[src]; s.remove(); fail(); };
+  document.head.append(s);
+});
+let watchCC = null;
+function guessCC() {
+  const ok = c => c && WATCH.countries.includes(c);
+  try { const c = localStorage.getItem(WATCH_KEY); if (ok(c)) return c; } catch {}
+  const byZone = WATCH.tz[Intl.DateTimeFormat().resolvedOptions().timeZone];
+  if (ok(byZone)) return byZone;
+  for (const l of navigator.languages || []) { const r = l.split("-")[1]?.toUpperCase(); if (ok(r)) return r; }
+  return ok("US") ? "US" : WATCH.countries[0];
+}
+const regionName = cc => { try { return new Intl.DisplayNames([navigator.language || "en"], {type:"region"}).of(cc) || cc; } catch { return cc; } };
+const watchFailed = new Set();   // countries whose data file would not load this session
+// the inside of the card's "Where to watch" block, or null until the service list (watch/index.js) is in.
+// The country picker always shows once it is, so a visitor can always switch away from a country that fails.
+function watchHtml(id) {
+  if (typeof WATCH === "undefined" || !watchCC) return null;
+  const e = entries(uni(S.sel)).find(x => x.id === id);
+  // search the show, not "Show (Season 2)"; every What If...? episode lives under the series
+  const q = e?.k === "E" ? "What If...?" : (e?.t || "").replace(/ \(Season \d+\)$/, "").replace(/ \(\d{4}\)$/, "").replace(/ \(series\)$/, "");
+  const data = WATCH[watchCC], rows = data?.[id] || [], tm = WATCH.ids[id];
+  const options = [...WATCH.countries].map(c => [c, regionName(c)]).sort((a, b) => a[1].localeCompare(b[1]))
+    .map(([c, n]) => `<option value="${c}"${c === watchCC ? " selected" : ""}>${esc(n)}</option>`).join("");
+  const list = rows.map(([p, k], i) => {
+    const [name, tmpl, logo] = WATCH.providers[p];
+    // only ever link out over https, whatever the data file says
+    const href = /^https:\/\//.test(tmpl) ? tmpl.replace("{q}", encodeURIComponent(q)) : "https://www.google.com/search?q=" + encodeURIComponent(`${q} ${name}`);
+    return `<li><a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${logo ? `<img src="watch/logo/${+p}.webp" alt="" width="28" height="28">` : ""}<span><b>${esc(name)}</b><small>${esc(WATCH.kinds[k] || "")}${i ? "" : " · best option"}</small></span></a></li>`;
+  }).join("");
+  const body = !data ? `<p class="w-none">${watchFailed.has(watchCC) ? `Couldn't load streaming options for ${esc(regionName(watchCC))}. Try another country.` : "Finding where to watch…"}</p>`
+    : list ? `<ul class="w-list">${list}</ul>` : `<p class="w-none">Not available to stream in ${esc(regionName(watchCC))} right now.</p>`;
+  const more = tm ? `<a href="https://www.themoviedb.org/${tm[0] === "m" ? "movie" : "tv"}/${+tm.slice(1)}/watch?locale=${esc(watchCC)}" target="_blank" rel="noopener noreferrer">More ways to watch</a> · ` : "";
+  return `<div class="w-head"><b>Where to watch</b><select data-watch-cc aria-label="Country for streaming options">${options}</select></div>
+    ${body}<p class="w-foot">${more}Data from JustWatch via TMDB</p>`;
+}
+// redraw the block in place, keeping keyboard focus on the country picker if it had it
+function paintWatch(id) {
+  const slot = document.querySelector(`#detail .dt-watch[data-id="${CSS.escape(id)}"]`), html = slot && watchHtml(id);
+  if (!html) return;
+  const focused = document.activeElement?.matches?.("#detail [data-watch-cc]");
+  slot.innerHTML = html;
+  if (focused) slot.querySelector("[data-watch-cc]")?.focus();
+}
+async function fillWatch(id) {
+  try { await loadJs("watch/index.js"); } catch { return; }   // offline or blocked: the card keeps its placeholder line
+  watchCC ||= guessCC();
+  const cc = watchCC;
+  paintWatch(id);                                              // picker + "Finding…" while the country file loads
+  try { await loadJs(`watch/${cc}.js`); watchFailed.delete(cc); } catch { watchFailed.add(cc); }
+  if (cc === watchCC) paintWatch(id);                          // the visitor may have picked another country meanwhile
+}
+
 function renderDetail() {
   const box = $("#detail"), u = uni(S.sel), all = entries(u), e = detailId && all.find(x => x.id === detailId);
   if (!e) { box.innerHTML = ""; delete box.dataset.id; return; }
@@ -862,8 +925,10 @@ function renderDetail() {
     ${nn && nn[2] ? `<p class="dt-note">${esc(nn[2])}</p>` : ""}
     ${also.length ? `<p class="dt-also">Also appears in ${also.map(x => `<button type="button" class="uchip" data-go="${esc(x.id)}">${esc(x.name)}</button>`).join(", ")}</p>` : ""}
     ${epList(e.id, "dt-eps")}
+    <div class="dt-watch" data-id="${esc(e.id)}">${watchHtml(e.id) || `<p class="w-none">Finding where to watch…</p>`}</div>
     <div class="dt-act"><button class="btn ${seen ? "ghost" : "primary"}" type="button" data-act="watch" data-id="${esc(e.id)}">${seen ? "Watched ✓" : "Mark watched"}</button><button class="btn ghost" type="button" data-show="${esc(e.id)}">Show in list</button></div>
   </div>`);
+  if (typeof WATCH === "undefined" || !watchCC || !WATCH[watchCC]) fillWatch(e.id);
 }
 
 function showInList(id) {
@@ -946,6 +1011,12 @@ $("#tree").addEventListener("pointermove", e => {
 });
 $("#tree").addEventListener("pointerleave", () => tip.hidden = true);
 $("#uSel").addEventListener("change", e => select(e.target.value));
+$("#detail").addEventListener("change", e => {
+  if (!e.target.matches("[data-watch-cc]")) return;
+  watchCC = e.target.value;
+  try { localStorage.setItem(WATCH_KEY, watchCC); } catch {}
+  fillWatch(detailId);
+});
 $("#mode").addEventListener("click", e => { const m = e.target.dataset.mode; if (m) { S.mode = m; renderPanel(); } });
 $("#f-seen").addEventListener("change", e => { S.hideSeen = e.target.checked; renderPanel(); });
 $("#start").addEventListener("click", () => { select("616"); stage.scrollIntoView({behavior:"smooth"}); });
