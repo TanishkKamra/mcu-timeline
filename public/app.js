@@ -79,7 +79,7 @@ const UNIS = [
     ["The Punisher: One Last Kill","X","2026-05-12","2027","o"],
     ["Spider-Man: Brand New Day","F","2026-07-31","2028","o"],
     ["VisionQuest","S","2026-10-13","2028","e"],
-    ["Avengers: Doomsday","F","2026-12-18","2028","o"],
+    ["Avengers: Doomsday","F","2026-12-18","2028–29","o"],
    ]},
   {id:"tva", name:"Loki & the TVA", label:"Loki & the TVA", des:"Branched 2012", fork:2012, at:"avengersendgame",
    note:"During the Endgame time heist, the 2012 Loki grabs the Tesseract and escapes. The TVA catches him, the timeline splinters, and Loki ends up at the End of Time weaving the branches into Yggdrasil.",
@@ -239,7 +239,7 @@ const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 document.querySelectorAll(".kk").forEach(k => k.textContent = MAC ? "⌘K" : "Ctrl K");
 
 const KEY = "mcu-yggdrasil-v2";
-const DEF = () => ({sel:"616", mode:"story", hideSeen:false, watched:{}, edits:{}, removed:[], order:{}, cItems:{}, cUnis:[]});
+const DEF = () => ({sel:"616", mode:"story", kind:"all", hideSeen:false, watched:{}, edits:{}, removed:[], order:{}, cItems:{}, cUnis:[]});
 let S;
 try { S = {...DEF(), ...JSON.parse(localStorage.getItem(KEY) || "{}")}; } catch { S = DEF(); }
 const hash = decodeURIComponent(location.hash.slice(1));
@@ -256,6 +256,24 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const slug = t => t.toLowerCase().replace(/[^a-z0-9]+/g, "");
 const yearNum = y => { const m = String(y).match(/\d{4}/); return m ? +m[0] : Infinity; };
+// Films, series and seasons announced on TMDB but not yet placed by hand (upcoming.js, rebuilt from TMDB on
+// every publish by tools/build_upcoming.py) join the end of their universe as estimates, set "TBA", until placed here.
+const upSyn = {}, upSeries = new Set();
+if (typeof UPCOMING !== "undefined") {
+  // skip anything already on the site, including titles the visitor added themselves
+  const listed = new Set([...UNIS.flatMap(u => u.items.filter(Array.isArray).map(it => slug(it[0]))),
+    ...Object.values(S.cItems || {}).flat().map(e => slug(e.t || ""))]);
+  for (const f of UPCOMING) {
+    const home = UNIS.find(u => u.id === f.u) || UNIS.find(u => u.id === "616");
+    if (listed.has(f.slug) || slug(f.t) !== f.slug || !TYPE[f.k]) continue;
+    home.items.push([f.t, f.k, f.rel || "", "TBA", "e"]); listed.add(f.slug);
+    if (f.syn) upSyn[f.slug] = f.syn;
+    if (f.tv) upSeries.add(f.slug);
+    if (f.art && typeof ART !== "undefined") ART.add(f.slug);
+  }
+}
+// hand-written premise first (synopses.js), else TMDB's overview for an auto-added film
+const synOf = id => (typeof SYN !== "undefined" && SYN[id]) || upSyn[id] || "";
 const fmtDate = d => d ? new Date(d + "T00:00").toLocaleDateString(undefined, {year:"numeric",month:"short",day:"numeric"}) : "Unreleased";
 const unis = () => UNIS.concat(S.cUnis);
 const uni = id => unis().find(u => u.id === id);
@@ -425,6 +443,17 @@ function renderTree() {
 let visible = [];
 const CHECK = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>`;
 
+// Films / Series switch. Series = shows, What If...? episodes and animated series (anything with an episode
+// list); Films = everything else (films, one-shots, specials, TV films). The switch only appears, and only
+// filters, in universes that have both; elsewhere every title shows.
+const isSeries = e => e.k === "S" || e.k === "E" || upSeries.has(e.id) || (e.k === "A" && typeof EPS !== "undefined" && !!EPS[e.id]);
+const isMixed = all => all.some(isSeries) && all.some(e => !isSeries(e));
+let kindNow = "all";   // the filter in force for the universe on screen (set in renderPanel)
+const kindOk = e => kindNow === "all" || (isSeries(e) ? kindNow === "series" : kindNow === "film");
+const listed = e => kindOk(e) && !(S.hideSeen && S.watched[e.id]);
+// make sure a title can be seen in the list before jumping to it (palette, "Show in list")
+const unhide = e => { let hit = false; if (S.hideSeen && S.watched[e.id]) { S.hideSeen = false; hit = true; } if (!kindOk(e)) { S.kind = "all"; hit = true; } return hit; };
+
 // the title to watch next: first unwatched, released one in story order (or the fan Narrative order).
 // The classic "Up next" card and the TVA terminal's default case both use it, so they never disagree.
 function upNext(u, all = entries(u)) {
@@ -481,18 +510,23 @@ function renderPanel(focusSel) {
     ${custom ? (confirming === "u" ? `<div class="rowx">Delete this universe and its titles? <button class="btn warn" type="button" data-act="delu-yes">Delete</button><button class="btn ghost" type="button" data-act="cancel-c">Keep</button></div>`
       : `<div class="rowx"><button class="btn ghost" type="button" data-act="delu">Delete universe</button></div>`) : ""}`;
 
-  // up next: first unwatched, released title in story order
-  const seen = all.filter(e => S.watched[e.id]).length, p = all.length ? seen / all.length : 0;
+  // up next: first unwatched, released title in story order (of the films or series, when filtered)
+  const mixed = isMixed(all);
+  kindNow = mixed ? S.kind : "all";
+  const pool = all.filter(kindOk), seen = pool.filter(e => S.watched[e.id]).length, p = pool.length ? seen / pool.length : 0;
+  const what = kindNow === "film" ? " films" : kindNow === "series" ? " series" : "";
   const narr = S.mode === "narrative" && u.id === "616";
-  const nx = upNext(u, all);
+  const nx = upNext(u, pool);
   keepOpen($("#next"), nx?.id || "", "details", () => $("#next").innerHTML = nx
-    ? `<div class="next k-${nx.k}">${artImg(nx.id, "dt-art")}${ring(p, Math.round(p * 100) + "%")}<div><small>${seen ? "Up next" : "Start here"} · ${seen} of ${all.length} watched</small><strong>${esc(nx.t)}</strong>
+    ? `<div class="next k-${nx.k}">${artImg(nx.id, "dt-art")}${ring(p, Math.round(p * 100) + "%")}<div><small>${seen ? "Up next" : "Start here"} · ${seen} of ${pool.length}${what} watched</small><strong>${esc(nx.t)}</strong>
         <div class="sub"><span class="kd"></span>${TYPE[nx.k]} · set ${esc(nx.y)}</div></div>
         <button class="btn primary" type="button" data-act="watch" data-id="${esc(nx.id)}">Mark watched</button></div>`
-    : all.length ? `<div class="next">${ring(1, "100%")}<div><small>Universe complete</small><strong>You've seen everything here.</strong><div class="sub">Pick another branch on the tree.</div></div></div>` : "");
+    : pool.length ? `<div class="next">${ring(1, "100%")}<div><small>${what ? `All${what} watched` : "Universe complete"}</small><strong>You've seen everything here.</strong><div class="sub">Pick another branch on the tree.</div></div></div>` : "");
 
   document.querySelectorAll("#mode button").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === S.mode));
   $("#f-seen").checked = S.hideSeen;
+  $("#kind").hidden = !mixed;
+  document.querySelectorAll("#kind button").forEach(b => b.setAttribute("aria-pressed", b.dataset.kind === kindNow));
   const my = S.mode === "my";
   $("#tl").classList.toggle("my", my);
 
@@ -512,13 +546,13 @@ function renderPanel(focusSel) {
       const e = all.find(x => x.id === slug(ref));
       if (!e) return;
       placed.add(e.id);
-      if (!(S.hideSeen && S.watched[e.id])) html += card({...e, num:n, opt, note}, 0, 0, false);
+      if (listed(e)) html += card({...e, num:n, opt, note}, 0, 0, false);
     });
-    const rest = all.filter(e => !placed.has(e.id) && !(S.hideSeen && S.watched[e.id])).sort((a, b) => a.ord - b.ord);
+    const rest = all.filter(e => !placed.has(e.id) && listed(e)).sort((a, b) => a.ord - b.ord);
     if (rest.length) html += `<li class="yr">Not placed in this order</li>` + rest.map(e => card(e, 0, 0, false)).join("");
     visible = [];
   } else {
-  const list = all.filter(e => !(S.hideSeen && S.watched[e.id])).sort(
+  const list = all.filter(listed).sort(
     mode === "story" ? (a, b) => a.ord - b.ord
     : mode === "release" ? (a, b) => (a.rel || "9999").localeCompare(b.rel || "9999")
     : (a, b) => order.indexOf(a.id) - order.indexOf(b.id));
@@ -607,8 +641,8 @@ function choose(i) {
   if (!it) return;
   pal.close();
   if (it.kind === "u") { select(it.u.id); return; }
-  if (S.hideSeen && S.watched[it.e.id]) S.hideSeen = false;
   select(it.u.id);
+  if (unhide(it.e)) renderPanel();
   const li = document.querySelector(`li.e[data-id="${CSS.escape(it.e.id)}"]`);
   if (li) { li.scrollIntoView({behavior:"smooth", block:"center"}); li.classList.add("flash"); li.querySelector(".eye").focus({preventScroll:true}); }
 }
@@ -915,7 +949,7 @@ function renderDetail() {
     ${artImg(e.id, "dt-art")}
     <div class="dt-top"><span class="kd"></span>${TYPE[e.k] || "Title"} · ${esc(u.name)}<button type="button" class="dt-x" data-act="close-detail" aria-label="Close details">×</button></div>
     <h3>${esc(e.t)}</h3>
-    ${typeof SYN !== "undefined" && SYN[e.id] ? `<p class="dt-syn">${esc(SYN[e.id])}</p>` : ""}
+    ${synOf(e.id) ? `<p class="dt-syn">${esc(synOf(e.id))}</p>` : ""}
     <dl class="dt-facts">
       <div><dt>Set</dt><dd${e.c === "e" ? ` class="est" title="Best estimate: no official date"` : ""}>${esc(e.y || "Unknown")}</dd></div>
       <div><dt>${soon ? "Out" : "Released"}</dt><dd>${fmtDate(e.rel)}</dd></div>
@@ -932,7 +966,8 @@ function renderDetail() {
 }
 
 function showInList(id) {
-  if (S.hideSeen && S.watched[id]) { S.hideSeen = false; renderPanel(); }
+  const e = entries(uni(S.sel)).find(x => x.id === id);
+  if (e && unhide(e)) renderPanel();
   const li = document.querySelector(`li.e[data-id="${CSS.escape(id)}"]`);
   if (li) { li.scrollIntoView({behavior:"smooth", block:"center"}); li.classList.remove("flash"); void li.offsetWidth; li.classList.add("flash"); li.querySelector(".eye").focus({preventScroll:true}); }
 }
@@ -1019,6 +1054,7 @@ $("#detail").addEventListener("change", e => {
 });
 $("#mode").addEventListener("click", e => { const m = e.target.dataset.mode; if (m) { S.mode = m; renderPanel(); } });
 $("#f-seen").addEventListener("change", e => { S.hideSeen = e.target.checked; renderPanel(); });
+$("#kind").addEventListener("click", e => { const k = e.target.closest("[data-kind]")?.dataset.kind; if (k) { S.kind = k; renderPanel(); } });
 $("#start").addEventListener("click", () => { select("616"); stage.scrollIntoView({behavior:"smooth"}); });
 document.querySelectorAll("[data-pal]").forEach(b => b.addEventListener("click", openPal));
 document.addEventListener("keydown", e => {

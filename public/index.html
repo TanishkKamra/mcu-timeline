@@ -59,6 +59,11 @@
         <button type="button" data-mode="my" title="Your order (3)">Mine</button>
         <button type="button" data-mode="narrative" title="Fan Narrative order (4)">Narrative</button>
       </div>
+      <div class="seg" id="kind" role="group" aria-label="Show" hidden>
+        <button type="button" data-kind="all">All</button>
+        <button type="button" data-kind="film" title="Films, one-shots, specials and TV films">Films</button>
+        <button type="button" data-kind="series" title="Shows, What If...? episodes and animated series">Series</button>
+      </div>
       <button class="sbtn" type="button" data-pal>Find a title <kbd class="kk">Ctrl K</kbd></button>
       <label class="switch"><input type="checkbox" id="f-seen" role="switch"> Hide watched</label>
     </div>
@@ -104,6 +109,7 @@
 <!-- episodes.js (episode lists + which titles have art) first: app.js draws the first screen as soon as it runs.
      synopses.js needs app.js's slug(), and is only read once a title is opened. -->
 <script src="episodes.js"></script>
+<script src="upcoming.js"></script>
 <script src="app.js"></script>
 <script src="synopses.js"></script>
 <script src="tva.js"></script>
