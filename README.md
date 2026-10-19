@@ -7,3 +7,7 @@ Every Marvel film and series on one tree (Yggdrasil): 24 universes in Marvel's o
 Layout: `public/` is the site (deployed to Firebase Hosting with `firebase deploy`), `docs/` redirects the old GitHub Pages link. Run locally: `python -m http.server` inside `public/`. The data tools in `tools/` need Python 3 with Pillow (`pip install -r tools/requirements.txt`).
 
 Unofficial fan project. Not affiliated with or endorsed by Marvel Studios or The Walt Disney Company. All titles and characters are trademarks of their respective owners.
+
+## License
+
+Code: MIT, see [LICENSE](LICENSE). Artwork and Marvel names are not covered and belong to their owners.
