@@ -1,0 +1,2 @@
+# Written by tools/build_*.py; requirePragma in .prettierrc.json cannot skip JSON
+tools/*.json
