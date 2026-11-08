@@ -1704,7 +1704,7 @@ function watchHtml(id) {
     ? `<p class="w-none">${watchFailed.has(watchCC) ? `Couldn't load streaming options for ${esc(regionName(watchCC))}. Try another country.` : "Finding where to watch…"}</p>`
     : list
       ? `<ul class="w-list">${list}</ul>`
-      : `<p class="w-none">Not available to stream in ${esc(regionName(watchCC))} right now.</p>`;
+      : `<p class="w-none">No streaming listing for ${esc(regionName(watchCC))} yet.</p>`;
   const more = tm
     ? `<a href="https://www.themoviedb.org/${tm[0] === "m" ? "movie" : "tv"}/${+tm.slice(1)}/watch?locale=${esc(watchCC)}" target="_blank" rel="noopener noreferrer">More ways to watch</a> · `
     : "";

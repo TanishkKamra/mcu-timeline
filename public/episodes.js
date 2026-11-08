@@ -1,4 +1,5 @@
 // Episode titles (TVmaze) and spoiler-light one-line blurbs in our own words, keyed by title slug.
+// Episodes aired since are appended by tools/build_upcoming.py with TMDB's title and overview.
 // Each row: [season, episode, title, blurb, 1 if art/ep/<slug>-<season>x<episode>.webp exists]. Aired episodes only.
 const EPS = {"eyesofwakanda":[
 [1,1,"Into the Lion's Den","Noni gets a shot at rejoining the Dora Milaje by hunting down a warlord nicknamed the Lion.",1],
@@ -270,7 +271,12 @@ const EPS = {"eyesofwakanda":[
 [2,7,"The Hateful Darkness","A trial that hits close to home for Matt Murdock captures the whole city's focus.",1],
 [2,8,"The Southern Cross","Never-before-seen changes arrive for the city and the heroes who protect it.",1]],"visionquest":[
 [1,1,"No Strings","Vision sets off to discover who he is and is pursued by a lethal enemy.",1],
-[1,2,"Theseus","Vision meets the figure hunting him while he checks whether Tommy Shepherd is really his son.",1]],"lokiseason1":[
+[1,2,"Theseus","Vision meets the figure hunting him while he checks whether Tommy Shepherd is really his son.",1],
+[1,3,"Reboot","Vision and Tommy Shepherd join forces in order to survive while a terrifying killer strikes again.",1],
+[1,4,"Malware","As Vision confronts a new enemy, Ultron and Tommy Shepherd come face to face.",1],
+[1,5,"Firewall","Ultron and Jocasta join forces. Lisa comes to Vision's aid to help him evade capture.",1],
+[1,6,"Deadlock","Vision and Paladin form an uneasy alliance as Thomas finally learns the truth about his past.",1],
+[1,7,"Immolation","Vision and Ultron's twisted relationship comes undone.",1]],"lokiseason1":[
 [1,1,"Glorious Purpose","Loki lands at the TVA, out of time and forced to cooperate with others.",1],
 [1,2,"The Variant","Mobius assigns Loki to track a Variant, though several TVA staffers dislike working with the God of Mischief.",1],
 [1,3,"Lamentis","Loki is stranded on a collapsing moon with a broken TemPad and Sylvie, his least favorite Variant.",1],
