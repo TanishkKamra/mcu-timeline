@@ -7,14 +7,15 @@ Run before every publish:
 What it finds:
   * films and new series from Marvel's TMDB companies with a future (or not yet set) release date,
     leaving out preschool shows and anything not made with Marvel;
-  * new seasons of shows the site already lists.
+  * new seasons of shows the site already lists;
+  * episodes that have aired since the episode guide (public/episodes.js) was last updated.
 Each goes into the universe it belongs to (Marvel Studios -> Sacred Timeline, Spider-Verse films -> The
 Spider-Verse, Sony's live-action Spider-Man films -> Sony's Spider-Man Universe, a new season -> its show's
 universe). It writes public/upcoming.js (title, kind, universe, release date, TMDB overview) plus key art in
 public/art/. The site adds these at the end of their universe as estimated placements; once a title is placed
 by hand in app.js it drops out on the next run. Titles found once are kept after release (tools/upcoming.json),
 so nothing vanishes the day it comes out. The TMDB key comes from TMDB_TOKEN or ~/.tmdb_token, never the repo."""
-import datetime, io, json, os, re, shutil, subprocess, sys, time, urllib.parse, urllib.request
+import collections, datetime, io, json, os, re, shutil, subprocess, sys, time, urllib.parse, urllib.request
 from PIL import Image
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # titles in any script print on any console
@@ -83,13 +84,17 @@ def art_from_tmdb(kind, i, s):
     except Exception as e:   # no picture this time: the title still goes on the site, and gets art on a later run
         print(f"  warning: art for {kind} {i} failed: {e}"); return False
 
+def tmdb_image(size, path):
+    return Image.open(io.BytesIO(urllib.request.urlopen(f"https://image.tmdb.org/t/p/{size}" + path, timeout=60).read())).convert("RGB")
+
+def save_webp(im, W, file):   # scale to cover a 16:9 frame W wide, crop the middle
+    H = W * 9 // 16; k = max(W / im.width, H / im.height)
+    r = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
+    r.crop(((r.width - W) // 2, (r.height - H) // 2, (r.width - W) // 2 + W, (r.height - H) // 2 + H)).save(file, "WEBP", quality=72, method=6)
+
 def save_art(path, s):
-    im = Image.open(io.BytesIO(urllib.request.urlopen("https://image.tmdb.org/t/p/w1280" + path, timeout=60).read())).convert("RGB")
-    for W in (960, 480, 160):
-        H = W * 9 // 16; k = max(W / im.width, H / im.height)
-        r = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
-        r = r.crop(((r.width - W) // 2, (r.height - H) // 2, (r.width - W) // 2 + W, (r.height - H) // 2 + H))
-        r.save(os.path.join(PUB, "art", s + ("" if W == 960 else f"-{W}") + ".webp"), "WEBP", quality=72, method=6)
+    im = tmdb_image("w1280", path)
+    for W in (960, 480, 160): save_webp(im, W, os.path.join(PUB, "art", s + ("" if W == 960 else f"-{W}") + ".webp"))
     return True
 
 def copy_art(src, dst):
@@ -203,3 +208,39 @@ write(ALIASES, json.dumps(aliases, ensure_ascii=False, indent=1, sort_keys=True)
 write(STATE, json.dumps(out, ensure_ascii=False, indent=1))
 if aliases: print("id moves:", aliases)
 print(len(out), "auto-added titles")
+
+# 3. aired episodes missing from the episode guide. Hand-written rows are never changed: each new row gets
+# TMDB's episode title and overview and a still. Shows split into one title per episode (What If...?) are skipped.
+EPS_JS = os.path.join(PUB, "episodes.js")
+src = open(EPS_JS, encoding="utf-8").read()
+m = re.search(r"^const EPS = (\{.*?\});$", src, re.S | re.M)
+if not m: sys.exit("episodes.js: no EPS table found, episode guide not updated.")
+eps = json.loads(m.group(1))
+shows = {s_: (hand[s_][1], max(r[0] for r in rows)) for s_, rows in eps.items() if rows and hand.get(s_, [""])[0] == "tv"}
+for f in out:   # auto-added series and seasons, once they have started
+    if f["kind"] == "tv" and f["rel"] and f["rel"] <= today: shows.setdefault(f["slug"], (f["tmdb"], f["season"] or 1))
+shared = collections.Counter(shows.values())
+print("New episodes:")
+added = 0
+for s_, (i, n) in sorted(shows.items()):
+    if shared[(i, n)] > 1: continue
+    try: sea = api(f"/tv/{i}/season/{n}"); time.sleep(.08)
+    except (OSError, ValueError) as e:   # network, HTTP or bad JSON
+        print(f"  warning: TMDB episodes for {s_} failed, its guide stays as it is: {e}"); continue
+    rows = list(eps.get(s_, []))
+    have = {(r[0], r[1]) for r in rows}
+    for e in sea.get("episodes") or []:
+        en, name = e.get("episode_number"), (e.get("name") or "").strip()
+        if not isinstance(en, int) or (n, en) in have or not name or not (e.get("air_date") or "9999") <= today: continue
+        still = 0
+        if isinstance(e.get("still_path"), str):
+            try: save_webp(tmdb_image("w300", e["still_path"]), 192, os.path.join(PUB, "art", "ep", f"{s_}-{n}x{en}.webp")); still = 1
+            except (OSError, ValueError) as x: print(f"  warning: still for {s_} {n}x{en} failed, row added without it: {x}")
+        rows.append([n, en, name, (e.get("overview") or "").strip(), still]); added += 1
+        print(f"  {s_}  {n}x{en}  {name}")
+    if len(rows) > len(eps.get(s_, [])): eps[s_] = sorted(rows, key=lambda r: (r[0], r[1]))
+if added:
+    row = lambda r: json.dumps(r, ensure_ascii=False, separators=(",", ":"))
+    table = "{" + ",".join(json.dumps(k, ensure_ascii=False) + ":[\n" + ",\n".join(map(row, v)) + "]" for k, v in eps.items()) + "}"
+    write(EPS_JS, src[:m.start(1)] + table + src[m.end(1):])
+print(added, "new episodes")

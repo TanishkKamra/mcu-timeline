@@ -947,7 +947,7 @@ function watchHtml(id) {
     return `<li><a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${logo ? `<img src="watch/logo/${+p}.webp" alt="" width="28" height="28">` : ""}<span><b>${esc(name)}</b><small>${esc(WATCH.kinds[k] || "")}${i ? "" : " · best option"}</small></span></a></li>`;
   }).join("");
   const body = !data ? `<p class="w-none">${watchFailed.has(watchCC) ? `Couldn't load streaming options for ${esc(regionName(watchCC))}. Try another country.` : "Finding where to watch…"}</p>`
-    : list ? `<ul class="w-list">${list}</ul>` : `<p class="w-none">Not available to stream in ${esc(regionName(watchCC))} right now.</p>`;
+    : list ? `<ul class="w-list">${list}</ul>` : `<p class="w-none">No streaming listing for ${esc(regionName(watchCC))} yet.</p>`;
   const more = tm ? `<a href="https://www.themoviedb.org/${tm[0] === "m" ? "movie" : "tv"}/${+tm.slice(1)}/watch?locale=${esc(watchCC)}" target="_blank" rel="noopener noreferrer">More ways to watch</a> · ` : "";
   return `<div class="w-head"><b>Where to watch</b><select data-watch-cc aria-label="Country for streaming options">${options}</select></div>
     ${body}<p class="w-foot">${more}Data from JustWatch via TMDB</p>`;
