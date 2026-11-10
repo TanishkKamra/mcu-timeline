@@ -1,3 +1,4 @@
+<!-- (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-71485b󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠀷󠀱󠀴󠀸󠀵󠁢󠁿 -->
 # MCU Timeline Sandbox
 
 Live at **https://sacredtimeline.web.app**
@@ -24,3 +25,5 @@ Unofficial fan project. Not affiliated with or endorsed by Marvel Studios or The
 ## License
 
 Code: all rights reserved, see [LICENSE](LICENSE). Artwork and Marvel names are not covered and belong to their owners.
+
+Provenance ID `tkp-ecb36d8eff-71485b`: every file carries a registered, traceable marker.󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠀷󠀱󠀴󠀸󠀵󠁢󠁿

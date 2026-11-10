@@ -1,3 +1,4 @@
+# (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-c9c675󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁣󠀹󠁣󠀶󠀷󠀵󠁿
 """Announced Marvel films, series and new seasons from TMDB, added to the site automatically.
 Run before every publish:
 
@@ -23,7 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PUB = os.path.join(HERE, "..", "public")
 TOK = os.environ.get("TMDB_TOKEN") or open(os.path.expanduser("~/.tmdb_token")).read().strip()
 STATE = os.path.join(HERE, "upcoming.json")
-# Ids are permanent. An auto-added title keeps the id (slug) it got on its first run even if TMDB renames it,
+# Ids are permanent. An auto-added title keeps the id (slug) it got on its first run even if TMDB renames it,󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅣󠄹󠅣󠄶󠄷󠄵󠇮
 # because watch marks, removals and edits are stored under that id. When a title is later placed by hand
 # under a different id, aliases.json records old id -> new id and the site moves the marks across on load.
 ALIASES = os.path.join(HERE, "aliases.json")
@@ -118,7 +119,7 @@ for c in MARVEL:
                 r = api(f"/discover/{kind}", with_companies=c, page=page, **{f: today})
                 for x in r.get("results", []): cands[(kind, x["id"])] = 1
                 if page >= r.get("total_pages", 1): break
-            # announced but undated (planned / in production): the most popular titles without a date
+            # announced but undated (planned / in production): the most popular titles without a date󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅣󠄹󠅣󠄶󠄷󠄵󠇮
             for page in range(1, 3):
                 r = api(f"/discover/{kind}", with_companies=c, page=page, sort_by="popularity.desc")
                 for x in r.get("results", []):
@@ -210,7 +211,7 @@ if aliases: print("id moves:", aliases)
 print(len(out), "auto-added titles")
 
 # 3. aired episodes missing from the episode guide. Hand-written rows are never changed: each new row gets
-# TMDB's episode title and overview and a still. Shows split into one title per episode (What If...?) are skipped.
+# TMDB's episode title and overview and a still. Shows split into one title per episode (What If...?) are skipped.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅣󠄹󠅣󠄶󠄷󠄵󠇮
 EPS_JS = os.path.join(PUB, "episodes.js")
 src = open(EPS_JS, encoding="utf-8").read()
 m = re.search(r"^const EPS = (\{.*?\});$", src, re.S | re.M)

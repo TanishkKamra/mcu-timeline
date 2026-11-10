@@ -1,4 +1,5 @@
-// item: [title, type, release, in-universe year, confidence o=official/on-screen e=estimate, fork year for What If twigs]
+// (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-e690e6󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁥󠀶󠀹󠀰󠁥󠀶󠁿
+// item: [title, type, release, in-universe year, confidence o=official/on-screen e=estimate, fork year for What If twigs]󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅥󠄶󠄹󠄰󠅥󠄶󠇮
 // type: F film, S series, A animated, E episode, X special, O One-Shot, T TV film
 const UNIS = [
   {
@@ -1336,7 +1337,7 @@ const inOut = ease; // cubic in-out, for camera moves
 const seg = (p, a, b) => Math.min(1, Math.max(0, (p - a) / (b - a)));
 const lerp = (a, b, t) => a + (b - a) * t;
 // one master clock, like a GSAP timeline: every part reads the same progress, so the phases overlap
-// instead of stopping and starting
+// instead of stopping and starting󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅥󠄶󠄹󠄰󠅥󠄶󠇮
 const timeline = (ms, fn) =>
   new Promise((res) => {
     const t0 = performance.now();
@@ -2210,7 +2211,7 @@ window.mcuApp = {
   },
   // An account signed in. If this browser's progress belongs to a different account, it is cleared, so the new
   // account starts from its own cloud copy (true is returned). Progress made before anyone signed in here joins it.
-  // was: the account older versions remembered in their own key, used once.
+  // was: the account older versions remembered in their own key, used once.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅥󠄶󠄹󠄰󠅥󠄶󠇮
   claim(uid, was) {
     if (!S.owner && was) S.owner = was;
     const other = !!S.owner && S.owner !== uid;
@@ -2230,3 +2231,25 @@ window.mcuApp = {
   toast,
   onSave: null,
 };
+// Original work by Tanishk Kamra: github.com/TanishkKamra/mcu-timeline (tkp-ecb36d8eff-e690e6)
+(function () {
+  var build = "tkp-ecb36d8eff-e690e6", site = "site_ffabc563fd", own = ["", "127.0.0.1", "localhost", "sacredtimeline.firebaseapp.com", "sacredtimeline.web.app"];
+  function credit() {
+    var a = document.createElement("a");
+    a.href = "https://github.com/TanishkKamra/mcu-timeline";
+    a.textContent = "Original by Tanishk Kamra";
+    a.setAttribute("data-site", site);
+    a.style.cssText = "position:fixed;right:8px;bottom:8px;z-index:2147483647;padding:6px 10px;border-radius:6px;" +
+      "background:#111;color:#fff;font:13px/1.3 system-ui,sans-serif;text-decoration:underline;opacity:.9";
+    document.body.appendChild(a);
+  }
+  try {
+    document.documentElement.setAttribute("data-build", build);
+    var h = location.hostname;
+    if (own.indexOf(h) !== -1 || /\.localhost$/.test(h)) return;
+    console.info("This page is a copy of " + "Tanishk Kamra" + "'s work: https://github.com/TanishkKamra/mcu-timeline (" + build + ")");
+    if (document.body) credit(); else document.addEventListener("DOMContentLoaded", credit);
+  } catch (e) {
+    console.debug("provenance check skipped", e);
+  }
+})();

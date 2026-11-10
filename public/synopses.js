@@ -1,4 +1,5 @@
-// Spoiler-light premises in our own words: the setup only, never the ending. Keyed by title, looked up by slug.
+// (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-a626ec󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁡󠀶󠀲󠀶󠁥󠁣󠁿
+// Spoiler-light premises in our own words: the setup only, never the ending. Keyed by title, looked up by slug.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅡󠄶󠄲󠄶󠅥󠅣󠇮
 const SYN = Object.fromEntries(
   Object.entries({
     // Sacred Timeline
@@ -206,7 +207,7 @@ const SYN = Object.fromEntries(
       "Scattered across time, the X-Men fight to get home while new threats rise in their absence.",
     "Your Friendly Neighborhood Spider-Man (Season 1)":
       "A new Peter Parker begins his hero career with Norman Osborn as a mentor in a separate reality.",
-    // Marvel Television
+    // Marvel Television󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅡󠄶󠄲󠄶󠅥󠅣󠇮
     "Agent Carter (Season 1)":
       "In 1946, Peggy Carter secretly helps Howard Stark clear his name while battling sexism at the SSR.",
     "Agent Carter (Season 2)": "Peggy moves to Los Angeles to investigate a strange substance called Zero Matter.",
@@ -274,7 +275,7 @@ const SYN = Object.fromEntries(
       "Teenager Miles Morales becomes Spider-Man and meets Spider-People from other dimensions.",
     "Spider-Man: Across the Spider-Verse": "Miles reunites with Gwen and discovers a society of Spider-People.",
     "Spider-Man: Beyond the Spider-Verse": "The conclusion of Miles Morales's multiverse trilogy. (Upcoming.)",
-    // Before the MCU
+    // Before the MCU󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅡󠄶󠄲󠄶󠅥󠅣󠇮
     Blade: "Half-vampire Blade hunts vampires and faces Deacon Frost.",
     "Blade II": "Blade allies with vampires to face a new breed of creature.",
     "Blade: Trinity": "Blade joins the Nightstalkers to face Dracula.",

@@ -1,4 +1,5 @@
-// Optional Google sign-in: keeps a signed-in visitor's progress in Firestore under their own uid.
+// (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-c7c832󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁣󠀷󠁣󠀸󠀳󠀲󠁿
+// Optional Google sign-in: keeps a signed-in visitor's progress in Firestore under their own uid.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅣󠄷󠅣󠄸󠄳󠄲󠇮
 // Without a Firebase config the site works exactly as before, saving to this browser only.
 //
 // The cloud copy and this device's copy merge entry by entry (state.js), so nothing is lost when two
@@ -96,7 +97,7 @@ async function start() {
       return say("Too much to sync. Your progress still saves on this device.");
     if (!navigator.onLine) return say(OFFLINE); // the "online" listener sends it when the connection is back
     try {
-      // updatedAt is only a record of when; merging uses the per-entry stamps inside data
+      // updatedAt is only a record of when; merging uses the per-entry stamps inside data󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅣󠄷󠅣󠄸󠄳󠄲󠇮
       await F.setDoc(ref, { data, updatedAt: Date.now() });
       if (g === gen) {
         lastSent = data;
@@ -243,7 +244,7 @@ async function start() {
     stop();
     if (!user) return render();
     // this browser's progress belongs to the account that last signed in here (kept in the saved state, so every
-    // tab and a browser that can't store anything agree); a different account starts from its own cloud copy
+    // tab and a browser that can't store anything agree); a different account starts from its own cloud copy󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅣󠄷󠅣󠄸󠄳󠄲󠇮
     if (app.claim(user.uid, stored(UID_KEY)))
       app.toast("Signed in to a different account. Showing that account's progress.");
     store(UID_KEY, null);
