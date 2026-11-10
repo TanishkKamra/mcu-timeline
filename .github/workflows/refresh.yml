@@ -1,4 +1,3 @@
-# (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-54f7e8󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠀵󠀴󠁦󠀷󠁥󠀸󠁿
 # Daily data refresh: new episodes, announced titles and where-to-watch from TMDB, deployed to Firebase Hosting.
 # It deploys the code on main, so main must always match what is live.
 # Google sign-in is keyless (Workload Identity Federation): no Google key is stored anywhere, and Google

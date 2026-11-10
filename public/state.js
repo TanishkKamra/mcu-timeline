@@ -1,5 +1,4 @@
-// (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-051870󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠀰󠀵󠀱󠀸󠀷󠀰󠁿
-// The visitor's saved state: its shape, validation, and the merge used by sync between tabs and devices.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠄰󠄵󠄱󠄸󠄷󠄰󠇮
+// The visitor's saved state: its shape, validation, and the merge used by sync between tabs and devices.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠄰󠄵󠄱󠄸󠄷󠄰󠇮󠁻󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠀰󠀵󠀱󠀸󠀷󠀰󠁽
 // Loaded after upcoming.js (for UP_ALIASES) and before app.js.
 //
 // Synced progress is a set of entries: one per watch mark, removed title, edited title, universe's custom

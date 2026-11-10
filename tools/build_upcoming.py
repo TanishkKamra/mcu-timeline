@@ -1,4 +1,3 @@
-# (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-c9c675󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁣󠀹󠁣󠀶󠀷󠀵󠁿
 """Announced Marvel films, series and new seasons from TMDB, added to the site automatically.
 Run before every publish:
 
@@ -24,7 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PUB = os.path.join(HERE, "..", "public")
 TOK = os.environ.get("TMDB_TOKEN") or open(os.path.expanduser("~/.tmdb_token")).read().strip()
 STATE = os.path.join(HERE, "upcoming.json")
-# Ids are permanent. An auto-added title keeps the id (slug) it got on its first run even if TMDB renames it,󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅣󠄹󠅣󠄶󠄷󠄵󠇮
+# Ids are permanent. An auto-added title keeps the id (slug) it got on its first run even if TMDB renames it,󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅣󠄹󠅣󠄶󠄷󠄵󠇮󠁻󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁣󠀹󠁣󠀶󠀷󠀵󠁽
 # because watch marks, removals and edits are stored under that id. When a title is later placed by hand
 # under a different id, aliases.json records old id -> new id and the site moves the marks across on load.
 ALIASES = os.path.join(HERE, "aliases.json")

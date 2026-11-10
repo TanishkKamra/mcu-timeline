@@ -1,5 +1,4 @@
-// (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-af4c6e󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁡󠁦󠀴󠁣󠀶󠁥󠁿
-// Episode titles (TVmaze) and spoiler-light one-line blurbs in our own words, keyed by title slug.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅡󠅦󠄴󠅣󠄶󠅥󠇮
+// Episode titles (TVmaze) and spoiler-light one-line blurbs in our own words, keyed by title slug.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅡󠅦󠄴󠅣󠄶󠅥󠇮󠁻󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁡󠁦󠀴󠁣󠀶󠁥󠁽
 // Episodes aired since are appended by tools/build_upcoming.py with TMDB's title and overview.
 // Each row: [season, episode, title, blurb, 1 if art/ep/<slug>-<season>x<episode>.webp exists]. Aired episodes only.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅡󠅦󠄴󠅣󠄶󠅥󠇮
 const EPS = {"eyesofwakanda":[

@@ -1,5 +1,4 @@
-// (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-d12db2󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁤󠀱󠀲󠁤󠁢󠀲󠁿
-// TVA View: an alternate interface modelled on the TVA's analog control rooms in Loki󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅤󠄱󠄲󠅤󠅢󠄲󠇮
+// TVA View: an alternate interface modelled on the TVA's analog control rooms in Loki󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅤󠄱󠄲󠅤󠅢󠄲󠇮󠁻󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁤󠀱󠀲󠁤󠁢󠀲󠁽
 // (1960s office hardware, 1980s 8-bit CRT graphics, case files and card catalogues).
 // Fan design: original artwork apart from TVmaze and TMDB art in case files, no official logos or characters. Shares state with app.js.
 (() => {

@@ -1,4 +1,3 @@
-# (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-08e780󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠀰󠀸󠁥󠀷󠀸󠀰󠁿
 """Where-to-watch data for the site, refreshed on every publish.
 
   python tools/build_watch.py            # re-pull providers from TMDB, then build
@@ -16,7 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "public", "watch")
 CACHE = os.path.join(HERE, ".cache")
 os.makedirs(os.path.join(OUT, "logo"), exist_ok=True); os.makedirs(CACHE, exist_ok=True)
-# the TMDB key never lives in the repo: TMDB_TOKEN environment variable, or the file ~/.tmdb_token󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠄰󠄸󠅥󠄷󠄸󠄰󠇮
+# the TMDB key never lives in the repo: TMDB_TOKEN environment variable, or the file ~/.tmdb_token󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠄰󠄸󠅥󠄷󠄸󠄰󠇮󠁻󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠀰󠀸󠁥󠀷󠀸󠀰󠁽
 TOK = os.environ.get("TMDB_TOKEN") or open(os.path.expanduser("~/.tmdb_token")).read().strip()
 TZ_REF = "2025b"   # IANA tz database release the time zone -> country table is built from (pinned, so a run is repeatable)
 def write(path, text):

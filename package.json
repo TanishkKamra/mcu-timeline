@@ -2,5 +2,8 @@
   "private": true,
   "devDependencies": {
     "prettier": "^3.9.10"
+  },
+  "config": {
+    "telemetrySiteId": "site_ffabc563fd"
   }
 }

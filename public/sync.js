@@ -1,5 +1,4 @@
-// (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-c7c832󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁣󠀷󠁣󠀸󠀳󠀲󠁿
-// Optional Google sign-in: keeps a signed-in visitor's progress in Firestore under their own uid.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅣󠄷󠅣󠄸󠄳󠄲󠇮
+// Optional Google sign-in: keeps a signed-in visitor's progress in Firestore under their own uid.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅣󠄷󠅣󠄸󠄳󠄲󠇮󠁻󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁣󠀷󠁣󠀸󠀳󠀲󠁽
 // Without a Firebase config the site works exactly as before, saving to this browser only.
 //
 // The cloud copy and this device's copy merge entry by entry (state.js), so nothing is lost when two

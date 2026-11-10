@@ -1,5 +1,4 @@
-// (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-609eea󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠀶󠀰󠀹󠁥󠁥󠁡󠁿
-// Firebase web config for Google sign-in and sync. These values identify the project and are safe to publish;󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠄶󠄰󠄹󠅥󠅥󠅡󠇮
+// Firebase web config for Google sign-in and sync. These values identify the project and are safe to publish;󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠄶󠄰󠄹󠅥󠅥󠅡󠇮󠁻󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠀶󠀰󠀹󠁥󠁥󠁡󠁽
 // access is enforced by firestore.rules. Set to null to turn sign-in off.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠄶󠄰󠄹󠅥󠅥󠅡󠇮
 export const FIREBASE = {
   apiKey: "AIzaSyDMyo_F1-_igD_eVgkoaHiBEGb-bKr6PTM",

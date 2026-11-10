@@ -1,5 +1,4 @@
-// (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-a626ec󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁡󠀶󠀲󠀶󠁥󠁣󠁿
-// Spoiler-light premises in our own words: the setup only, never the ending. Keyed by title, looked up by slug.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅡󠄶󠄲󠄶󠅥󠅣󠇮
+// Spoiler-light premises in our own words: the setup only, never the ending. Keyed by title, looked up by slug.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅡󠄶󠄲󠄶󠅥󠅣󠇮󠁻󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁡󠀶󠀲󠀶󠁥󠁣󠁽
 const SYN = Object.fromEntries(
   Object.entries({
     // Sacred Timeline

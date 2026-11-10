@@ -1,4 +1,3 @@
-/* (c) 2026 Tanishk Kamra | All rights reserved | github.com/TanishkKamra/mcu-timeline | tkp-ecb36d8eff-0010e8󠀁󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠀰󠀰󠀱󠀰󠁥󠀸󠁿 */
 /* base reset (the artifact host used to supply this) */
 :root {
   padding-top: env(safe-area-inset-top, 0px);
@@ -1938,4 +1937,3 @@ li.e .t:hover {
     animation: none;
   }
 }
-:root { --build-id: "tkp-ecb36d8eff-0010e8"; }
