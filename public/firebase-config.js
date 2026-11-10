@@ -1,5 +1,5 @@
-// Firebase web config for Google sign-in and sync. These values identify the project and are safe to publish;
-// access is enforced by firestore.rules. Set to null to turn sign-in off.
+// Firebase web config for Google sign-in and sync. These values identify the project and are safe to publish;󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠄶󠄰󠄹󠅥󠅥󠅡󠇮󠁻󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠀶󠀰󠀹󠁥󠁥󠁡󠁽
+// access is enforced by firestore.rules. Set to null to turn sign-in off.󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠄶󠄰󠄹󠅥󠅥󠅡󠇮
 export const FIREBASE = {
   apiKey: "AIzaSyDMyo_F1-_igD_eVgkoaHiBEGb-bKr6PTM",
   authDomain: "mcu-yggdrasil-tk.firebaseapp.com",

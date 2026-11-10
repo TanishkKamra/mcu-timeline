@@ -1,4 +1,4 @@
-// TVA View: an alternate interface modelled on the TVA's analog control rooms in Loki
+// TVA View: an alternate interface modelled on the TVA's analog control rooms in Loki󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅤󠄱󠄲󠅤󠅢󠄲󠇮󠁻󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠁤󠀱󠀲󠁤󠁢󠀲󠁽
 // (1960s office hardware, 1980s 8-bit CRT graphics, case files and card catalogues).
 // Fan design: original artwork apart from TVmaze and TMDB art in case files, no official logos or characters. Shares state with app.js.
 (() => {
@@ -163,7 +163,7 @@
   }
 
   // Branches diverge above the line in 8-bit steps, like the TVA's chronomonitor plots. Each one is placed by
-  // search, not by a fixed rule: try rungs from the lowest up (and both directions), and take the first
+  // search, not by a fixed rule: try rungs from the lowest up (and both directions), and take the first󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅤󠄱󠄲󠅤󠅢󠄲󠇮
   // where its label touches no other branch's line or label and its lines cross no other label. Labels start
   // far enough past their corner that a diagonal climbing on from the same fork passes to their left.
   let layoutCache = { key: null, placed: [] };
@@ -577,7 +577,7 @@
 
   // redraw whenever the shared state changes (watch marks, undo, sync from another device)
   window.mcuApp.onRender = () => render(false);
-  // the agent badge follows Google sign-in, which loads after this script
+  // the agent badge follows Google sign-in, which loads after this script󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠅤󠄱󠄲󠅤󠅢󠄲󠇮
   new MutationObserver(() => on && renderAgent()).observe($("#account"), {
     childList: true,
     subtree: true,

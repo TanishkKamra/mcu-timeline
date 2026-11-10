@@ -15,7 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "public", "watch")
 CACHE = os.path.join(HERE, ".cache")
 os.makedirs(os.path.join(OUT, "logo"), exist_ok=True); os.makedirs(CACHE, exist_ok=True)
-# the TMDB key never lives in the repo: TMDB_TOKEN environment variable, or the file ~/.tmdb_token
+# the TMDB key never lives in the repo: TMDB_TOKEN environment variable, or the file ~/.tmdb_token󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠄰󠄸󠅥󠄷󠄸󠄰󠇮󠁻󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠀰󠀸󠁥󠀷󠀸󠀰󠁽
 TOK = os.environ.get("TMDB_TOKEN") or open(os.path.expanduser("~/.tmdb_token")).read().strip()
 TZ_REF = "2025b"   # IANA tz database release the time zone -> country table is built from (pinned, so a run is repeatable)
 def write(path, text):
@@ -84,7 +84,7 @@ for slug, (kind, i) in ids.items():
                 providers.setdefault(pid, {"name": str(p.get("provider_name") or pid), "logo": p.get("logo_path")})
         if rows: per_cc.setdefault(cc, {})[slug] = rows
 
-# logos, self-hosted (small, square, rounded by CSS)
+# logos, self-hosted (small, square, rounded by CSS)󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠄰󠄸󠅥󠄷󠄸󠄰󠇮
 for pid, p in providers.items():
     path = os.path.join(OUT, "logo", f"{pid}.webp")
     if os.path.exists(path) or not isinstance(p["logo"], str) or not re.fullmatch(r"/[A-Za-z0-9_.-]+", p["logo"]): continue
@@ -117,7 +117,7 @@ head = "// Where to watch, built by build_watch.py from TMDB watch-provider data
 if not per_cc: sys.exit("No where-to-watch data at all (TMDB unreachable?). The site's files were left as they are.")
 for cc, rows in per_cc.items():
     write(os.path.join(OUT, f"{cc}.js"), head + f"WATCH[{json.dumps(cc)}] = " + json.dumps(rows, separators=(",", ":")) + ";\n")
-# countries that no longer have any data: remove their old files so they don't ship
+# countries that no longer have any data: remove their old files so they don't ship󠇯󠅴󠅫󠅰󠄭󠅥󠅣󠅢󠄳󠄶󠅤󠄸󠅥󠅦󠅦󠄭󠄰󠄸󠅥󠄷󠄸󠄰󠇮
 for f in glob.glob(os.path.join(OUT, "*.js")):
     cc = os.path.basename(f)[:-3]
     if cc != "index" and cc not in per_cc: os.remove(f); print("removed stale", os.path.basename(f))

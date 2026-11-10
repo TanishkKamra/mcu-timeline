@@ -23,4 +23,4 @@ Unofficial fan project. Not affiliated with or endorsed by Marvel Studios or The
 
 ## License
 
-Code: all rights reserved, see [LICENSE](LICENSE). Artwork and Marvel names are not covered and belong to their owners.
+Code: all rights reserved, see [LICENSE](LICENSE). Artwork and Marvel names are not covered and belong to their owners.󠁻󠁴󠁫󠁰󠀭󠁥󠁣󠁢󠀳󠀶󠁤󠀸󠁥󠁦󠁦󠀭󠀷󠀱󠀴󠀸󠀵󠁢󠁽
